@@ -46,16 +46,22 @@ forms.fileInput.addEventListener('change', (e) => {
     forms.fileName.textContent = file ? file.name : "No file selected";
 });
 
+// ==========================================================================
+// FORM TRANSMISSION PAYLOAD REFINEMENT
+// ==========================================================================
 forms.setup.addEventListener('submit', async (e) => {
     e.preventDefault();
     
     const file = forms.fileInput.files[0];
     if (!file) return alert('Please assign a core PDF syllabus asset first.');
 
+    // Construct the payload with exact matching key tokens
     const formData = new FormData();
-    formData.append('syllabus', file);
+    formData.append('syllabus', file); // MUST match upload.single('syllabus') exactly
     formData.append('examDate', doc('examDate').value);
     formData.append('weeklyHours', doc('weeklyHours').value);
+
+    // ... balance of your loading toggle and fetch calls continue below ...
 
     // Swap states into interactive loading configurations
     views.spinner.classList.remove('hidden');
