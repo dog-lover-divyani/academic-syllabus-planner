@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EduTrack AI // Academic Syllabus Planner</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+
+    <div class="app-container">
+        
+        <aside class="sidebar">
+            <div class="brand-header">
+                <i class="fa-solid fa-graduation-cap"></i>
+                <h2>EduTrack <span class="accent">AI</span></h2>
+            </div>
+
+            <section class="config-panel">
+                <form id="syllabusForm">
+                    <div class="input-group">
+                        <label for="examDate">Target Exam Date</label>
+                        <input type="date" id="examDate" required>
+                    </div>
+
+                    <div class="input-group">
+                        <label for="weeklyHours">Available Hours / Week</label>
+                        <input type="number" id="weeklyHours" min="1" max="168" placeholder="e.g., 12" required>
+                    </div>
+
+                    <div class="input-group upload-zone" id="dropZone">
+                        <i class="fa-solid fa-cloud-arrow-up"></i>
+                        <span class="upload-text">Drag & drop or click to upload PDF syllabus</span>
+                        <input type="file" id="syllabusFile" accept=".pdf" required hidden>
+                    </div>
+                    <div id="fileSelectedName" class="file-status-text">No file selected</div>
+
+                    <button type="submit" id="generateBtn" class="btn-primary">
+                        <i class="fa-solid fa-wand-magic-sparkles"></i> Generate Study Plan
+                    </button>
+                </form>
+            </section>
+
+            <hr class="divider">
+
+            <nav class="schedule-nav">
+                <h3>Course Timeline</h3>
+                <div id="loadingState" class="loading-spinner hidden">
+                    <i class="fa-solid fa-circle-notch fa-spin"></i>
+                    <p>AI analyzing syllabus content...</p>
+                </div>
+                <ul id="weeksList" class="weeks-menu">
+                    <li class="empty-state-nav">Upload a syllabus to build your timeline tracker.</li>
+                </ul>
+            </nav>
+        </aside>
+
+        <main class="main-content">
+            <header class="main-header">
+                <h1 id="courseTitle">Academic Workspace</h1>
+                <div class="overall-progress-container">
+                    <span id="progressPercentage">Progress: 0%</span>
+                    <div class="progress-bar-bg">
+                        <div id="progressFill" class="progress-bar-fill" style="width: 0%;"></div>
+                    </div>
+                </div>
+            </header>
+
+            <div id="emptyWorkspace" class="empty-workspace-view">
+                <i class="fa-solid fa-calendar-check placeholder-icon"></i>
+                <h2>Ready to streamline your study schedule?</h2>
+                <p>Upload your course syllabus document in the sidebar panel. Our AI architecture will extract curriculum requirements, parse core milestones, and build an execution strategy mapped entirely around your target exam date.</p>
+            </div>
+
+            <div id="activeWorkspace" class="workspace-grid hidden">
+                
+                <section class="card topics-card">
+                    <div class="card-header">
+                        <h2 id="activeWeekTitle">Week 1 Breakdown</h2>
+                        <span id="activeWeekHours" class="badge">Estimated: -- hrs</span>
+                    </div>
+                    <h3 id="activeTopicName" class="active-topic-header">Select a week to begin study</h3>
+                    
+                    <div class="subtopics-wrapper">
+                        <h4>Subtopics Checklist</h4>
+                        <ul id="subtopicsChecklist" class="checklist">
+                            </ul>
+                    </div>
+                </section>
+
+                <section class="card notes-card">
+                    <div class="card-header">
+                        <h2><i class="fa-regular fa-file-lines"></i> Study Workspace Notes</h2>
+                        <button id="aiSummarizeBtn" class="btn-secondary btn-small">
+                            <i class="fa-solid fa-bolt"></i> AI Summarize
+                        </button>
+                    </div>
+                    <textarea id="notesArea" placeholder="Type or paste your lecture concepts, reference links, and custom study insights here. Data persists locally to your profile environment automatically..."></textarea>
+                    <div class="card-footer">
+                        <span id="saveStatus" class="status-msg">All notes saved locally</span>
+                        <button id="saveNotesBtn" class="btn-primary btn-small">Save Progress</button>
+                    </div>
+                </section>
+
+                <section class="card flashcards-full-width">
+                    <div class="card-header">
+                        <h2><i class="fa-solid fa-layer-group"></i> Active Recall Flashcards</h2>
+                        <button id="generateCardsBtn" class="btn-secondary">
+                            <i class="fa-solid fa-gears"></i> Generate Cards From Notes
+                        </button>
+                    </div>
+                    
+                    <div class="flashcard-display-zone">
+                        <div id="flashcardEmpty" class="inner-empty-state">
+                            <p>Need to test your core retention? Click the generator mechanism above to convert your saved study notes straight into an interactive deck of flashcards.</p>
+                        </div>
+                        
+                        <div id="flashcardContainer" class="flashcard hidden">
+                            <div class="flashcard-inner" id="flashcardInner">
+                                <div class="flashcard-front">
+                                    <span class="card-side-label">QUESTION</span>
+                                    <p id="cardQuestionText">What is the space complexity of an in-place inversion sorting algorithm implementation?</p>
+                                </div>
+                                <div class="flashcard-back">
+                                    <span class="card-side-label">ANSWER</span>
+                                    <p id="cardAnswerText">O(1) Constant Space complexity bounds because manipulation steps iterate pointers directly within current memory allocation spaces.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="flashcardControls" class="flashcard-navigation-actions hidden">
+                        <button id="prevCardBtn" class="btn-nav"><i class="fa-solid fa-arrow-left"></i> Previous</button>
+                        <span id="cardTrackerIndex">Card 1 of 5</span>
+                        <button id="nextCardBtn" class="btn-nav">Next <i class="fa-solid fa-arrow-right"></i></button>
+                    </div>
+                </section>
+
+            </div>
+        </main>
+    </div>
+
+    <script src="js/app.js"></script>
+</body>
+</html>
