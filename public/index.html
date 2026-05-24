@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>EduTrack AI // Academic Syllabus Planner</title>
-    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="/css/styles.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
@@ -16,6 +16,19 @@
                 <i class="fa-solid fa-graduation-cap"></i>
                 <h2>EduTrack <span class="accent">AI</span></h2>
             </div>
+
+            <div class="input-group theme-selector-container">
+                <label for="themeSelect"><i class="fa-solid fa-palette"></i> Dashboard Vibe</label>
+                <select id="themeSelect" class="theme-dropdown">
+                    <option value="light-default">Light ☀️</option>
+                    <option value="cute-pastel">Cute Pastel 🌸</option>
+                    <option value="minimal-aesthetic">Minimal Aesthetic ☕</option>
+                    <option value="light-gradient">Gradient ✨</option>
+                    <option value="cyber-dark">Dark 🌙</option>
+                </select>
+            </div>
+
+            <hr class="divider">
 
             <section class="config-panel">
                 <form id="syllabusForm">
@@ -120,11 +133,11 @@
                             <div class="flashcard-inner" id="flashcardInner">
                                 <div class="flashcard-front">
                                     <span class="card-side-label">QUESTION</span>
-                                    <p id="cardQuestionText">What is the space complexity of an in-place inversion sorting algorithm implementation?</p>
+                                    <p id="cardQuestionText">--</p>
                                 </div>
                                 <div class="flashcard-back">
                                     <span class="card-side-label">ANSWER</span>
-                                    <p id="cardAnswerText">O(1) Constant Space complexity bounds because manipulation steps iterate pointers directly within current memory allocation spaces.</p>
+                                    <p id="cardAnswerText">--</p>
                                 </div>
                             </div>
                         </div>
@@ -132,7 +145,7 @@
 
                     <div id="flashcardControls" class="flashcard-navigation-actions hidden">
                         <button id="prevCardBtn" class="btn-nav"><i class="fa-solid fa-arrow-left"></i> Previous</button>
-                        <span id="cardTrackerIndex">Card 1 of 5</span>
+                        <span id="cardTrackerIndex">Card 1 of --</span>
                         <button id="nextCardBtn" class="btn-nav">Next <i class="fa-solid fa-arrow-right"></i></button>
                     </div>
                 </section>
@@ -141,6 +154,6 @@
         </main>
     </div>
 
-    <script src="js/app.js"></script>
+    <script src="/js/app.js"></script>
 </body>
 </html>

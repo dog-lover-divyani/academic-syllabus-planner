@@ -1,0 +1,594 @@
+/* ==========================================================================
+   THEME VARIABLE CONFIGURATIONS (DARK GRADIENT EDITION)
+   ========================================================================== */
+
+/* 1. Pure Light Theme ☀️ */
+:root, body[data-theme="light-default"] {
+    --bg-primary: #f8fafc;       /* Crisp, bright slate tint */
+    --bg-secondary: #ffffff;     /* Pure white elevated cards */
+    --bg-sidebar: #f1f5f9;       /* Solid gray structural sidebar */
+    --accent: #2563eb;           /* High-contrast royal blue */
+    --accent-hover: #1d4ed8;
+    --text-main: #0f172a;        /* Deep ink slate for bold readability */
+    --text-muted: #64748b;       /* Muted ash metadata */
+    --border-color: #cbd5e1;     /* Distinct structural boundaries */
+    --card-radius: 12px;
+    --transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* 2. Cute Pastel Theme 🌸 */
+body[data-theme="cute-pastel"] {
+    --bg-primary: #fff5f5;       
+    --bg-secondary: #ffffff;     
+    --bg-sidebar: #ffe3e3;       
+    --accent: #ff8787;           
+    --accent-hover: #fa5252;
+    --text-main: #495057;        
+    --text-muted: #868e96;
+    --border-color: #ffced8;     
+    --card-radius: 12px;
+    --transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* 3. Minimal Aesthetic Theme ☕ */
+body[data-theme="minimal-aesthetic"] {
+    --bg-primary: #f4f1ea;       
+    --bg-secondary: #faf8f5;     
+    --bg-sidebar: #eadecb;       
+    --accent: #7c6a59;           
+    --accent-hover: #5c4e41;
+    --text-main: #231f1a;        
+    --text-muted: #746a5f;
+    --border-color: #d2c5b4;     
+    --card-radius: 12px;
+    --transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* 4. Deep Dark Twilight Gradient Theme ✨ (FIXED & DARKENED) */
+body[data-theme="light-gradient"] {
+    /* Rich, moody dark gradient blending deep violet, dark navy, and twilight teal */
+    --bg-primary: linear-gradient(135deg, #1e1b4b 0%, #0f172a 50%, #042f2e 100%); 
+    /* Semi-translucent glassmorphic card overlay styled perfectly for dark contrast */
+    --bg-secondary: rgba(30, 41, 59, 0.7); 
+    --bg-sidebar: #090d16;
+    --accent: #a78bfa;           /* Vibrant neon-pastel violet accent */
+    --accent-hover: #c084fc;
+    --text-main: #f8fafc;        /* Off-white text clarity */
+    --text-muted: #94a3b8;       
+    --border-color: rgba(167, 139, 250, 0.25); /* Glowing subtle violet border trim */
+    --card-radius: 12px;
+    --transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* 5. Cyber Dark Theme 🌙 */
+body[data-theme="cyber-dark"] {
+    --bg-primary: #0f172a;
+    --bg-secondary: #1e293b;
+    --bg-sidebar: #0b0f19;
+    --accent: #38bdf8;
+    --accent-hover: #0ea5e9;
+    --text-main: #f8fafc;
+    --text-muted: #94a3b8;
+    --border-color: #334155;
+    --card-radius: 12px;
+    --transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ==========================================================================
+   GLOBAL LAYOUT ENGINE & COMPONENTS
+   ========================================================================== */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+body {
+    background: var(--bg-primary);
+    background-attachment: fixed;
+    color: var(--text-main);
+    overflow: hidden;
+    height: 100vh;
+    transition: background 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+}
+
+.app-container {
+    display: grid;
+    grid-template-columns: 340px 1fr;
+    width: 100vw;
+    height: 100vh;
+}
+
+/* SIDEBAR LAYOUT STYLES */
+.sidebar {
+    background-color: var(--bg-sidebar);
+    border-right: 1px solid var(--border-color);
+    display: flex;
+    flex-direction: column;
+    padding: 24px;
+    height: 100%;
+    overflow-y: auto;
+}
+
+.brand-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 24px;
+}
+
+.brand-header i {
+    font-size: 24px;
+    color: var(--accent);
+}
+
+.brand-header h2 {
+    font-size: 20px;
+    font-weight: 700;
+}
+
+.accent {
+    color: var(--accent);
+}
+
+.theme-selector-container {
+    margin-bottom: 12px;
+}
+
+.theme-dropdown {
+    background-color: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    color: var(--text-main);
+    padding: 10px 14px;
+    font-size: 14px;
+    outline: none;
+    cursor: pointer;
+    transition: var(--transition);
+    width: 100%;
+}
+
+.config-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+}
+
+.input-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.input-group label {
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-muted);
+}
+
+.input-group input {
+    background-color: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    color: var(--text-main);
+    padding: 10px 14px;
+    font-size: 14px;
+    outline: none;
+    transition: var(--transition);
+}
+
+.input-group input:focus, .theme-dropdown:focus {
+    border-color: var(--accent);
+}
+
+.upload-zone {
+    border: 2px dashed var(--border-color);
+    border-radius: 8px;
+    padding: 24px 16px;
+    text-align: center;
+    cursor: pointer;
+    transition: var(--transition);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+}
+
+.upload-zone:hover {
+    border-color: var(--accent);
+    background-color: rgba(56, 189, 248, 0.02);
+}
+
+.upload-zone i {
+    font-size: 28px;
+    color: var(--text-muted);
+}
+
+.upload-text {
+    font-size: 13px;
+    color: var(--text-muted);
+}
+
+.file-status-text {
+    font-size: 11px;
+    color: var(--accent);
+    text-align: center;
+    margin-top: -6px;
+    font-style: italic;
+}
+
+.divider {
+    border: 0;
+    height: 1px;
+    background-color: var(--border-color);
+    margin: 24px 0;
+}
+
+/* BUTTON CONTROLS SECTOR GRAPH RULES */
+.btn-primary, .btn-secondary {
+    width: 100%;
+    border-radius: 6px;
+    font-weight: 600;
+    font-size: 14px;
+    padding: 12px;
+    cursor: pointer;
+    border: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: var(--transition);
+}
+
+.btn-primary {
+    background-color: var(--accent);
+    color: #000;
+}
+
+/* Handle text color changes for buttons dynamically on dark gradient and dark themes */
+body[data-theme="light-gradient"] .btn-primary,
+body[data-theme="cyber-dark"] .btn-primary {
+    color: #fff;
+}
+
+.btn-primary:hover {
+    opacity: 0.9;
+}
+
+.btn-secondary {
+    background-color: transparent;
+    border: 1px solid var(--border-color);
+    color: var(--text-main);
+}
+
+.btn-secondary:hover {
+    background-color: rgba(255, 255, 255, 0.05);
+}
+
+.btn-small {
+    padding: 6px 12px;
+    font-size: 12px;
+    width: auto;
+}
+
+/* TIMELINE GENERATION ITEMS */
+.schedule-nav h3 {
+    font-size: 12px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    letter-spacing: 0.5px;
+    margin-bottom: 12px;
+}
+
+.weeks-menu {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.week-item {
+    padding: 12px 16px;
+    background-color: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    transition: var(--transition);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.week-item:hover, .week-item.active {
+    border-color: var(--accent);
+    background-color: rgba(56, 189, 248, 0.05);
+}
+
+.empty-state-nav {
+    font-size: 13px;
+    color: var(--text-muted);
+    text-align: center;
+}
+
+/* MAIN CONTENT BLOCK DESIGN RULES */
+.main-content {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    overflow-y: auto;
+    padding: 40px;
+}
+
+.main-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 24px;
+    margin-bottom: 32px;
+}
+
+.overall-progress-container {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    width: 200px;
+}
+
+#progressPercentage {
+    font-size: 12px;
+    font-weight: 600;
+    text-align: right;
+    color: var(--accent);
+}
+
+.progress-bar-bg {
+    background-color: var(--border-color);
+    height: 6px;
+    border-radius: 3px;
+    width: 100%;
+    overflow: hidden;
+}
+
+.progress-bar-fill {
+    background-color: var(--accent);
+    height: 100%;
+    width: 0%;
+    transition: width 0.4s ease-out;
+}
+
+.workspace-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+}
+
+/* Adding a subtle glass backdrop filter for the translucent theme layout */
+.card {
+    background-color: var(--bg-secondary);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border: 1px solid var(--border-color);
+    border-radius: var(--card-radius);
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    transition: background-color 0.3s ease;
+}
+
+.card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.badge {
+    background-color: rgba(167, 139, 250, 0.15);
+    color: var(--accent);
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.active-topic-header {
+    font-size: 18px;
+    font-weight: 600;
+    margin-bottom: 16px;
+}
+
+.subtopics-wrapper h4 {
+    font-size: 13px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 12px;
+}
+
+.checklist {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.checklist li {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    font-size: 14px;
+}
+
+.checklist input[type="checkbox"] {
+    margin-top: 3px;
+    accent-color: var(--accent);
+    cursor: pointer;
+}
+
+#notesArea {
+    width: 100%;
+    flex-grow: 1;
+    min-height: 240px;
+    background-color: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 16px;
+    color: var(--text-main);
+    font-size: 14px;
+    line-height: 1.6;
+    resize: none;
+    outline: none;
+}
+
+.card-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 16px;
+}
+
+.status-msg {
+    font-size: 12px;
+    color: var(--text-muted);
+}
+
+/* FLASHCARDS INTERACTIVE DEPTH LAYER RULES */
+.flashcards-full-width {
+    grid-column: 1 / -1;
+}
+
+.flashcard-display-zone {
+    display: flex;
+    justify-content: center;
+    padding: 12px 0;
+}
+
+.flashcard {
+    width: 100%;
+    max-width: 550px;
+    height: 200px;
+    perspective: 1000px;
+    cursor: pointer;
+}
+
+.flashcard-inner {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    text-align: center;
+    transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+    transform-style: preserve-3d;
+}
+
+.flashcard.flipped .flashcard-inner {
+    transform: rotateX(180deg);
+}
+
+.flashcard-front, .flashcard-back {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    backface-visibility: hidden;
+    border-radius: 10px;
+    border: 1px solid var(--border-color);
+    padding: 32px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+}
+
+.flashcard-front {
+    background-color: var(--bg-primary);
+}
+
+.flashcard-back {
+    background-color: var(--bg-secondary);
+    transform: rotateX(180deg);
+}
+
+.card-side-label {
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--text-muted);
+    margin-bottom: 12px;
+}
+
+.flashcard p {
+    font-size: 15px;
+    line-height: 1.5;
+}
+
+.flashcard-navigation-actions {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 24px;
+    margin-top: 16px;
+}
+
+.btn-nav {
+    background: none;
+    border: 1px solid var(--border-color);
+    color: var(--text-main);
+    padding: 6px 16px;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.btn-nav:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+}
+
+#cardTrackerIndex {
+    font-size: 13px;
+    color: var(--text-muted);
+}
+
+/* LOADING UTILITIES STATUS TRACKERS */
+.hidden {
+    display: none !important;
+}
+
+.loading-spinner {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    padding: 24px 0;
+    color: var(--accent);
+}
+
+.empty-workspace-view {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    max-width: 600px;
+    margin: auto;
+    padding: 40px 0;
+}
+
+.placeholder-icon {
+    font-size: 64px;
+    color: var(--border-color);
+    margin-bottom: 24px;
+}
+
+.empty-workspace-view h2 {
+    font-size: 22px;
+    margin-bottom: 12px;
+}
+
+.empty-workspace-view p {
+    font-size: 14px;
+    color: var(--text-muted);
+    line-height: 1.6;
+}

@@ -1,0 +1,239 @@
+// ==========================================================================
+// CENTRAL STATE GRAPH INITIALIZATION
+// ==========================================================================
+let currentPlanData = null; 
+let selectedWeekIndex = 0;  
+let generatedFlashcards = []; 
+let activeCardIndex = 0;    
+
+const doc = id => document.getElementById(id);
+const forms = {
+    setup: doc('syllabusForm'),
+    fileInput: doc('syllabusFile'),
+    dropZone: doc('dropZone'),
+    fileName: doc('fileSelectedName'),
+    submitBtn: doc('generateBtn')
+};
+const views = {
+    empty: doc('emptyWorkspace'),
+    active: doc('activeWorkspace'),
+    spinner: doc('loadingState'),
+    weeksNav: doc('weeksList'),
+    courseTitle: doc('courseTitle'),
+    themeSelector: doc('themeSelect')
+};
+
+// ==========================================================================
+// THEME DYNAMIC SELECTOR SPECIFICATION ENGINE
+// ==========================================================================
+// Checks for a previously saved theme preference, defaulting to your clean 'light-default' style
+const savedTheme = localStorage.getItem('app-user-theme') || 'light-default';
+document.body.setAttribute('data-theme', savedTheme);
+views.themeSelector.value = savedTheme;
+
+views.themeSelector.addEventListener('change', (e) => {
+    const selectedValue = e.target.value;
+    document.body.setAttribute('data-theme', selectedValue);
+    localStorage.setItem('app-user-theme', selectedValue);
+});
+
+// ==========================================================================
+// FILE INPUT CONTROLS & SELECTIONS HANDLERS
+// ==========================================================================
+forms.dropZone.addEventListener('click', () => forms.fileInput.click());
+forms.fileInput.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    forms.fileName.textContent = file ? file.name : "No file selected";
+});
+
+forms.setup.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    const file = forms.fileInput.files[0];
+    if (!file) return alert('Please assign a core PDF syllabus asset first.');
+
+    const formData = new FormData();
+    formData.append('syllabus', file);
+    formData.append('examDate', doc('examDate').value);
+    formData.append('weeklyHours', doc('weeklyHours').value);
+
+    // Swap states into interactive loading configurations
+    views.spinner.classList.remove('hidden');
+    forms.submitBtn.disabled = true;
+    views.empty.classList.remove('hidden');
+    views.active.classList.add('hidden');
+
+    try {
+        const response = await fetch('/api/parse-syllabus', {
+            method: 'POST',
+            body: formData
+        });
+
+        if (!response.ok) throw new Error('Network responded with systemic layout failure.');
+
+        currentPlanData = await response.json();
+        
+        views.empty.classList.add('hidden');
+        views.active.classList.remove('hidden');
+        
+        renderTimelineNavigation(currentPlanData);
+        switchActiveWeekWorkspace(0); 
+        calculateOverallProgress();
+
+    } catch (error) {
+        console.error("UI Core Thread Error:", error);
+        alert('An issue occurred while converting your document. Verify system endpoints.');
+    } finally {
+        views.spinner.classList.add('hidden');
+        forms.submitBtn.disabled = false;
+    }
+});
+
+// ==========================================================================
+// DYNAMIC COMPONENT RENDER ENGINE
+// ==========================================================================
+function renderTimelineNavigation(plan) {
+    views.courseTitle.textContent = plan.courseName || "My Academic Course";
+    views.weeksNav.innerHTML = '';
+
+    plan.schedule.forEach((item, index) => {
+        const li = document.createElement('li');
+        li.className = `week-item ${index === 0 ? 'active' : ''}`;
+        li.innerHTML = `<span>Week ${item.week}</span><i class="fa-solid fa-chevron-right"></i>`;
+        
+        li.addEventListener('click', () => {
+            document.querySelectorAll('.week-item').forEach(el => el.classList.remove('active'));
+            li.classList.add('active');
+            switchActiveWeekWorkspace(index);
+        });
+        views.weeksNav.appendChild(li);
+    });
+}
+
+function switchActiveWeekWorkspace(index) {
+    selectedWeekIndex = index;
+    const targetModule = currentPlanData.schedule[index];
+
+    doc('activeWeekTitle').textContent = `Week ${targetModule.week} Core Focus`;
+    doc('activeWeekHours').textContent = `Estimated: ${targetModule.estimatedHours || '--'} hrs`;
+    doc('activeTopicName').textContent = targetModule.topicTitle;
+
+    const checklistContainer = doc('subtopicsChecklist');
+    checklistContainer.innerHTML = '';
+
+    const storageChecklistKey = `progress_course_${views.courseTitle.textContent}_week_${targetModule.week}`;
+    const historicalProgressState = JSON.parse(localStorage.getItem(storageChecklistKey)) || {};
+
+    targetModule.subtopics.forEach((sub, subIdx) => {
+        const li = document.createElement('li');
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.id = `sub_${index}_${subIdx}`;
+        checkbox.checked = !!historicalProgressState[subIdx];
+
+        checkbox.addEventListener('change', () => {
+            historicalProgressState[subIdx] = checkbox.checked;
+            localStorage.setItem(storageChecklistKey, JSON.stringify(historicalProgressState));
+            calculateOverallProgress();
+        });
+
+        const label = document.createElement('label');
+        label.setAttribute('for', checkbox.id);
+        label.textContent = sub;
+
+        li.appendChild(checkbox);
+        li.appendChild(label);
+        checklistContainer.appendChild(li);
+    });
+
+    const storageNotesKey = `notes_course_${views.courseTitle.textContent}_week_${targetModule.week}`;
+    doc('notesArea').value = localStorage.getItem(storageNotesKey) || '';
+    doc('saveStatus').textContent = "Draft retrieved from profile storage.";
+
+    resetFlashcardUIComponents();
+}
+
+function calculateOverallProgress() {
+    if (!currentPlanData) return;
+    
+    let totalItemsCount = 0;
+    let checkedItemsCount = 0;
+
+    currentPlanData.schedule.forEach((item) => {
+        const key = `progress_course_${views.courseTitle.textContent}_week_${item.week}`;
+        const state = JSON.parse(localStorage.getItem(key)) || {};
+        
+        item.subtopics.forEach((_, subIdx) => {
+            totalItemsCount++;
+            if (state[subIdx]) checkedItemsCount++;
+        });
+    });
+
+    const outputRatio = totalItemsCount > 0 ? Math.round((checkedItemsCount / totalItemsCount) * 100) : 0;
+    doc('progressPercentage').textContent = `Progress: ${outputRatio}%`;
+    doc('progressFill').style.width = `${outputRatio}%`;
+}
+
+doc('saveNotesBtn').addEventListener('click', () => {
+    if (!currentPlanData) return;
+    const targetModule = currentPlanData.schedule[selectedWeekIndex];
+    const storageNotesKey = `notes_course_${views.courseTitle.textContent}_week_${targetModule.week}`;
+    
+    localStorage.setItem(storageNotesKey, doc('notesArea').value);
+    doc('saveStatus').textContent = "All changes saved locally!";
+    setTimeout(() => { doc('saveStatus').textContent = "All notes saved locally"; }, 2000);
+});
+
+// ==========================================================================
+// ACTIVE RECALL MODULE FUNCTIONALITY
+// ==========================================================================
+function resetFlashcardUIComponents() {
+    doc('flashcardEmpty').classList.remove('hidden');
+    doc('flashcardContainer').classList.add('hidden');
+    doc('flashcardControls').classList.add('hidden');
+    doc('flashcardContainer').classList.remove('flipped');
+}
+
+doc('generateCardsBtn').addEventListener('click', () => {
+    const notesValue = doc('notesArea').value.trim();
+    if (notesValue.length < 15) return alert('Type dynamic study notes above so our client module can structure flashcards.');
+
+    generatedFlashcards = [
+        { q: "Core Focus Concept Exploration Question?", a: "Extracted and mapped automatically via user-entered contextual lecture inputs." },
+        { q: "Critical Milestone Structural Check?", a: "Review current study specifications to target retention fields precisely." }
+    ];
+
+    activeCardIndex = 0;
+    doc('flashcardEmpty').classList.add('hidden');
+    doc('flashcardContainer').classList.remove('hidden');
+    doc('flashcardControls').classList.remove('hidden');
+    hydrateCardFields();
+});
+
+doc('flashcardContainer').addEventListener('click', () => {
+    doc('flashcardContainer').classList.toggle('flipped');
+});
+
+function hydrateCardFields() {
+    doc('flashcardContainer').classList.remove('flipped');
+    setTimeout(() => {
+        const targetCard = generatedFlashcards[activeCardIndex];
+        doc('cardQuestionText').textContent = targetCard.q;
+        doc('cardAnswerText').textContent = targetCard.a;
+        doc('cardTrackerIndex').textContent = `Card ${activeCardIndex + 1} of ${generatedFlashcards.length}`;
+    }, 150);
+}
+
+doc('nextCardBtn').addEventListener('click', () => {
+    if (activeCardIndex < generatedFlashcards.length - 1) {
+        activeCardIndex++;
+        hydrateCardFields();
+    }
+});
+
+doc('prevCardBtn').addEventListener('click', () => {
+    if (activeCardIndex > 0) {
+        activeCardIndex--;
+        hydrateCardFields();
+    }
+});

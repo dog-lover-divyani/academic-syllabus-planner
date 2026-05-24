@@ -1,32 +1,30 @@
 const express = require('express');
 const multer = require('multer');
 const pdfParse = require('pdf-parse');
-const { OpenAI } = require('openai');
+const { GoogleGenAI } = require('@google/genai'); // Official Google GenAI SDK
 const path = require('path');
 require('dotenv').config();
 
 const app = express();
 
-// Middleware for parsing JSON JSON payloads
+// Middleware config
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use(express.static(path.join(__dirname, 'public')));
 
-// Configure multer to store files in memory (RAM buffer) instead of disk
+// Configure multer to hold files entirely inside temporary RAM buffers
 const storage = multer.memoryStorage();
 const upload = multer({ 
   storage: storage,
-  limits: { fileSize: 5 * 1024 * 1024 } // Limit files to 5MB max
+  limits: { fileSize: 5 * 1024 * 1024 } // 5MB Limit Max
 });
 
-// Initialize OpenAI Instance
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY
-});
+// Initialize the free Gemini API instance
+const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
-// ROUTE 1: Handle Syllabus Upload & AI Processing
+// CORE ROUTE: Handle syllabus text parsing & map structured schedules
 app.post('/api/parse-syllabus', upload.single('syllabus'), async (req, res) => {
   try {
-    // 1. Validation checks
     if (!req.file) {
       return res.status(400).json({ error: "Please upload a syllabus file." });
     }
@@ -36,55 +34,64 @@ app.post('/api/parse-syllabus', upload.single('syllabus'), async (req, res) => {
       return res.status(400).json({ error: "Missing required timeline parameters." });
     }
 
-    // 2. Extract raw text directly out of the memory buffer
+    // Extract text layout straight out of memory buffer
     const pdfData = await pdfParse(req.file.buffer);
     const rawText = pdfData.text;
 
     if (!rawText || rawText.trim().length === 0) {
-      return res.status(400).json({ error: "Could not extract text from this PDF file. Is it an scanned image?" });
+      return res.status(400).json({ error: "Could not extract text from this PDF file." });
     }
 
-    // 3. Construct the prompt for OpenAI
-    const systemPrompt = `You are an elite academic planner. Your goal is to break down a messy syllabus into a strict week-by-week study schedule.
-    Calculate the time requirement based on the target exam date: ${examDate} and the student's study allocation: ${weeklyHours} hours per week.
-    You must respond ONLY with a valid JSON object matching this schema exactly:
-    {
-      "courseName": "Extract Course Name or Title",
-      "totalEstimatedWeeks": 4,
-      "schedule": [
-        {
-          "week": 1,
-          "topicTitle": "Topic title here",
-          "estimatedHours": 6,
-          "subtopics": ["Subtopic A", "Subtopic B"]
-        }
-      ]
-    }`;
+    const systemInstructions = `You are an elite academic advisor. Break down this messy syllabus text into a strict week-by-week study timeline.
+    Factor in the student's exam date: ${examDate} and capacity parameters: ${weeklyHours} hours per week.
+    You must respond ONLY with a valid JSON object matching the requested schema.`;
 
-    // 4. Send payloads to LLM via Structured Output Mode
-    const aiResponse = await openai.chat.completions.create({
-      model: "gpt-4o-mini", // Cost-effective, high speed, great structure parser
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: `Syllabus text content to categorize:\n${rawText}` }
-      ],
-      response_format: { type: "json_object" }
+    // Enforce strict JSON object output configuration structure
+    const jsonSchema = {
+      type: "OBJECT",
+      properties: {
+        courseName: { type: "STRING" },
+        totalEstimatedWeeks: { type: "NUMBER" },
+        schedule: {
+          type: "ARRAY",
+          items: {
+            type: "OBJECT",
+            properties: {
+              week: { type: "NUMBER" },
+              topicTitle: { type: "STRING" },
+              estimatedHours: { type: "NUMBER" },
+              subtopics: { type: "ARRAY", items: { type: "STRING" } }
+            },
+            required: ["week", "topicTitle", "estimatedHours", "subtopics"]
+          }
+        }
+      },
+      required: ["courseName", "totalEstimatedWeeks", "schedule"]
+    };
+
+    // Trigger Generation call using the incredibly fast, free gemini-2.5-flash engine
+    const aiResponse = await ai.models.generateContent({
+      model: "gemini-2.5-flash",
+      contents: `Syllabus text dataset to parse:\n${rawText}`,
+      config: {
+        systemInstruction: systemInstructions,
+        responseMimeType: "application/json",
+        responseSchema: jsonSchema
+      }
     });
 
-    // 5. Parse output and return back to the student browser client
-    const structuredSchedule = JSON.parse(aiResponse.choices[0].message.content);
+    // Parse output string cleanly and respond back to the browser client interface
+    const structuredSchedule = JSON.parse(aiResponse.text);
     res.json(structuredSchedule);
 
   } catch (error) {
-    console.error("Backend Core Error:", error);
-    res.status(500).json({ error: "Internal processing error occurred while parsing syllabus." });
+    console.error("Gemini Backend Processing Error:", error);
+    res.status(500).json({ error: "An error occurred while generating your schedule." });
   }
 });
 
-// Export server for Vercel's serverless pipeline handler
 module.exports = app;
 
-// Local runner loop fallback mechanism (If not hosted on cloud environment)
 if (process.env.NODE_ENV !== 'production') {
   const PORT = process.env.PORT || 3000;
   app.listen(PORT, () => console.log(`Local development hub active on: http://localhost:${PORT}`));
