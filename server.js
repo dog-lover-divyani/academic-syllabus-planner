@@ -198,26 +198,23 @@ app.post('/api/summarize-notes', async (req, res) => {
       return res.status(400).json({ error: "Please write some notes to summarize first." });
     }
 
-    const systemInstructions = `You are an expert academic editor specializing in study optimization. 
-    The user will provide messy study notes that may contain shortcuts, abbreviations, or incomplete thoughts.
-    Expand shorthand definitions cleanly and convert the text entirely into a highly readable, clear plain-text layout. Do not output markdown asterisks or hash symbols.`;
+    console.log("⚡ Formulating summary from study workspace...");
+
+    const systemInstructions = `You are an expert academic editor. Convert the user's messy study notes entirely into a highly readable, clear plain-text layout. 
+    Do not output markdown characters like asterisks (**), hashtags (#), or backticks. Use clean spacing and standard bullet points (-) for clarity.`;
 
     const aiResponse = await ai.models.generateContent({
       model: "gemini-2.5-flash",
-      contents: `Deconstruct, expand shorthand, and summarize these messy student notes:\n${notes}`,
+      contents: `Deconstruct, expand shorthand, and summarize these notes:\n${notes}`,
       config: { systemInstruction: systemInstructions }
     });
 
-    res.json({ summary: aiResponse.text });
+    // Extract the raw text result safely
+    const plainTextSummary = aiResponse.text || "Could not generate summary text.";
+    res.json({ summary: plainTextSummary });
+
   } catch (error) {
     console.error("❌ Summarizer Processing Error:", error);
     res.status(500).json({ error: "Failed to generate AI summary context." });
   }
 });
-
-module.exports = app;
-
-if (process.env.NODE_ENV !== 'production') {
-  const PORT = process.env.PORT || 3000;
-  app.listen(PORT, () => console.log(`Local development hub active on: http://localhost:${PORT}`));
-}

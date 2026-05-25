@@ -1,1 +1,164 @@
-[]
+[
+  {
+    "id": "1779729933894",
+    "timestamp": "25/5/2026",
+    "examDate": "2026-12-25",
+    "weeklyHours": "20",
+    "data": {
+      "courseName": "CLOUD COMPUTING (PROFESSIONAL ELECTIVE – II)",
+      "totalEstimatedWeeks": 14,
+      "schedule": [
+        {
+          "week": 1,
+          "topicTitle": "Understanding Cloud Computing Fundamentals",
+          "estimatedHours": 18,
+          "subtopics": [
+            "Cloud Computing",
+            "Introduction to Cloud Computing",
+            "Cloud Architecture and Cloud Services (IaaS, PaaS, SaaS)"
+          ]
+        },
+        {
+          "week": 2,
+          "topicTitle": "Cloud Models and Reference Architectures",
+          "estimatedHours": 18,
+          "subtopics": [
+            "Cloud models- Public vs Private",
+            "Cloud Technologies for Network-Based System",
+            "System Models for Distributed and Cloud Computing",
+            "NIST Cloud Computing Reference Architecture"
+          ]
+        },
+        {
+          "week": 3,
+          "topicTitle": "Virtualization Basics",
+          "estimatedHours": 18,
+          "subtopics": [
+            "Basics of Virtualization",
+            "Types of Virtualizations",
+            "Implementation Levels of Virtualization",
+            "Virtualization Structures",
+            "Tools and Mechanisms"
+          ]
+        },
+        {
+          "week": 4,
+          "topicTitle": "Advanced Virtualization and Data-center Automation",
+          "estimatedHours": 18,
+          "subtopics": [
+            "Virtualization of CPU, Memory, I/O Devices",
+            "Virtual Clusters and Resource management",
+            "Virtualization for Data-center Automation"
+          ]
+        },
+        {
+          "week": 5,
+          "topicTitle": "Cloud Infrastructure Design",
+          "estimatedHours": 18,
+          "subtopics": [
+            "Architectural Design of Compute and Storage Clouds",
+            "Layered Cloud Architecture Development",
+            "Design Challenges"
+          ]
+        },
+        {
+          "week": 6,
+          "topicTitle": "Cloud Resource Management and Deployment",
+          "estimatedHours": 18,
+          "subtopics": [
+            "Inter Cloud Resource Management",
+            "Resource Provisioning and Platform Deployment",
+            "Global Exchange of Cloud Resources"
+          ]
+        },
+        {
+          "week": 7,
+          "topicTitle": "Parallel and Distributed Programming Paradigms",
+          "estimatedHours": 18,
+          "subtopics": [
+            "Parallel and Distributed Programming Paradigms",
+            "Map Reduce",
+            "Twister and Iterative Map Reduce"
+          ]
+        },
+        {
+          "week": 8,
+          "topicTitle": "Hadoop and Programming Support Platforms",
+          "estimatedHours": 18,
+          "subtopics": [
+            "Hadoop Library from Apache",
+            "Mapping Applications",
+            "Programming Support (Google App Engine, Amazon AWS)"
+          ]
+        },
+        {
+          "week": 9,
+          "topicTitle": "Cloud Software Environments and APIs",
+          "estimatedHours": 18,
+          "subtopics": [
+            "Cloud Software Environments",
+            "Eucalyptus",
+            "Working with EC2 API",
+            "Open Nebula",
+            "Open Stack",
+            "Aneka",
+            "CloudSim"
+          ]
+        },
+        {
+          "week": 10,
+          "topicTitle": "Cloud Security Overview and Risks",
+          "estimatedHours": 18,
+          "subtopics": [
+            "Security Overview",
+            "Cloud Security Challenges and Risks",
+            "Software- as-a Service Security",
+            "Security Governance",
+            "Risk Management"
+          ]
+        },
+        {
+          "week": 11,
+          "topicTitle": "Cloud Security Architecture and Data Protection",
+          "estimatedHours": 18,
+          "subtopics": [
+            "Security Monitoring",
+            "Security Architecture Design",
+            "Data Security",
+            "Application Security"
+          ]
+        },
+        {
+          "week": 12,
+          "topicTitle": "Virtual Machine Security and Access Control",
+          "estimatedHours": 18,
+          "subtopics": [
+            "Virtual Machine Security",
+            "Identity Management and Access Control",
+            "Autonomic Security"
+          ]
+        },
+        {
+          "week": 13,
+          "topicTitle": "Comprehensive Review - Units I, II, III",
+          "estimatedHours": 20,
+          "subtopics": [
+            "Review of Cloud Computing Fundamentals (Unit I)",
+            "Review of Virtualization (Unit II)",
+            "Review of Cloud Infrastructure (Unit III)"
+          ]
+        },
+        {
+          "week": 14,
+          "topicTitle": "Comprehensive Review - Units IV, V and Final Preparations",
+          "estimatedHours": 20,
+          "subtopics": [
+            "Review of Programming Models (Unit IV)",
+            "Review of Cloud Security (Unit V)",
+            "General Practice and Exam Preparation"
+          ]
+        }
+      ]
+    }
+  }
+]

@@ -350,7 +350,7 @@ if (expandLink) {
 }
 
 // ==========================================================================
-// DYNAMIC SERVER HISTORY STREAMING ARCHITECTURE
+// DYNAMIC SERVER HISTORY STREAMING ARCHITECTURE (FOOLPROOF ENGINE)
 // ==========================================================================
 async function streamHistoricalDatabaseLogs() {
     const historyContainer = document.getElementById('historyPlanList');
@@ -362,56 +362,54 @@ async function streamHistoricalDatabaseLogs() {
         
         const databaseRecords = await response.json();
         
-        if (databaseRecords.length === 0) {
-            historyContainer.innerHTML = `<li style="font-size: 11px; opacity: 0.6; padding: 6px;">No saved history profiles yet.</li>`;
+        if (!databaseRecords || databaseRecords.length === 0) {
+            historyContainer.innerHTML = `<li style="font-size: 11px; opacity: 0.6; padding: 6px; list-style: none;">No saved history profiles yet.</li>`;
             return;
         }
 
-        // Wipe out the loading placeholder elements cleanly
+        // Clear placeholders cleanly
         historyContainer.innerHTML = '';
 
         databaseRecords.forEach(record => {
             const planItem = document.createElement('li');
             planItem.className = 'history-item-link';
-            planItem.style.cssText = 'padding: 8px 12px; border-radius: 6px; background: rgba(0,0,0,0.05); font-size: 12px; cursor: pointer; display: flex; flex-direction: column; justify-content: space-between; transition: all 0.2s;';
+            planItem.style.cssText = 'padding: 8px 12px; border-radius: 6px; background: rgba(0,0,0,0.04); font-size: 12px; cursor: pointer; display: flex; flex-direction: column; transition: all 0.2s; margin-bottom: 4px; list-style: none;';
             
             planItem.innerHTML = `
-                <strong style="color: var(--accent);">${record.data.courseName || 'Unparsed Course Plan'}</strong>
-                <span style="font-size: 10px; opacity: 0.7; margin-top: 2px;"><i class="fa-solid fa-calendar"></i> ${record.timestamp} — Weeks: ${record.data.totalEstimatedWeeks}</span>
+                <strong style="color: var(--accent);">${record.data?.courseName || 'Unparsed Course Plan'}</strong>
+                <span style="font-size: 10px; opacity: 0.7; margin-top: 2px;"><i class="fa-solid fa-calendar"></i> ${record.timestamp} — Weeks: ${record.data?.totalEstimatedWeeks || '--'}</span>
             `;
 
-            // Hover interactions using inline layout styles safely
-            planItem.addEventListener('mouseenter', () => planItem.style.background = 'rgba(0,0,0,0.1)');
-            planItem.addEventListener('mouseleave', () => planItem.style.background = 'rgba(0,0,0,0.05)');
+            planItem.addEventListener('mouseenter', () => planItem.style.background = 'rgba(0,0,0,0.08)');
+            planItem.addEventListener('mouseleave', () => planItem.style.background = 'rgba(0,0,0,0.04)');
 
-            // TRIGGER SWAP CLICK: Instantly hydrate the entire layout context!
+            // SAFE UI WORKSPACE HYDRATION
             planItem.addEventListener('click', () => {
-                console.log(`📡 Switching structural layout to: ${record.data.courseName}`);
+                if (!record.data) return alert("Historical data payload is corrupted.");
                 
-                // 1. Sync global script variables to matching records dataset
+                // Sync global variable if it exists in your app context
                 if (typeof activeScheduleData !== 'undefined') activeScheduleData = record.data;
                 
-                // If your app uses variables like courseTitle directly, assign them:
-                const courseTitleEl = doc('courseTitle');
+                // Safe element updates using optional chaining
+                const courseTitleEl = document.getElementById('courseTitle');
                 if (courseTitleEl) courseTitleEl.textContent = record.data.courseName;
 
-                // 2. Clear out standby empty grid screens and show the active panels
-                doc('emptyWorkspace').classList.add('hidden');
-                doc('activeWorkspace').classList.remove('hidden');
+                // Safely toggle display layouts without breaking execution loops
+                document.getElementById('emptyWorkspace')?.classList.add('hidden');
+                document.getElementById('activeWorkspace')?.classList.remove('hidden');
 
-                // 3. Trigger your app's core timeline loop list rendering logic!
-                // Assuming your application uses renderTimelineWeeks or buildTimelineMenus, fire them up:
+                // Execute core ui re-rendering pipelines dynamically
                 if (typeof renderTimelineWeeks === 'function') {
                     renderTimelineWeeks(record.data);
                 } else if (typeof renderWeeksMenu === 'function') {
                     renderWeeksMenu(record.data);
+                } else if (typeof displaySchedule === 'function') {
+                    displaySchedule(record.data);
                 } else {
-                    // Fallback to reload the sidebar checklist loop manually if the variable is nested
-                    window.location.reload(); // Quick global fallback to restore state if needed
+                    console.log("History selected. Please refresh or select a specific week link manually.");
                 }
                 
-                // Let the user know the swap completed cleanly
-                alert(`Switched workspace context to: ${record.data.courseName}`);
+                alert(`Loaded workspace for: ${record.data.courseName}`);
             });
 
             historyContainer.appendChild(planItem);
@@ -422,14 +420,5 @@ async function streamHistoricalDatabaseLogs() {
     }
 }
 
-// Ensure history database records load up the second the browser viewport initializes!
+// Fire the log load sequence immediately when DOM structure mounts
 document.addEventListener('DOMContentLoaded', streamHistoricalDatabaseLogs);
-
-// Hook inside your existing submit handler logic to re-trigger a log update on new generations
-const coreSyllabusForm = document.getElementById('syllabusForm');
-if (coreSyllabusForm) {
-    coreSyllabusForm.addEventListener('submit', () => {
-        // Delay log sync for 3.5 seconds to let the api completely finish writing file operations
-        setTimeout(streamHistoricalDatabaseLogs, 3500);
-    });
-}
