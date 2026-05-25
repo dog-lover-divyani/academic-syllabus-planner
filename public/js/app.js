@@ -329,20 +329,21 @@ if (summarizeBtn) {
 }
 
 // ==========================================================================
-// WORKSPACE RESIZE VIEWPORT TOGGLE ENGINE
+// WORKSPACE THEATER MODE FULL-SCREEN TOGGLE ENGINE
 // ==========================================================================
 const expandLink = document.getElementById('expandWorkspaceLink');
+
 if (expandLink) {
-    let isExpanded = false;
     expandLink.addEventListener('click', () => {
-        const notesArea = doc('notesArea');
-        isExpanded = !isExpanded;
+        // Toggle the theater mode class directly onto the global body tag
+        const theaterModeActive = document.body.classList.toggle('theater-mode-active');
         
-        if (isExpanded) {
-            notesArea.style.minHeight = "500px"; // Smoothly expands down for comfortable reading
+        if (theaterModeActive) {
+            // Update the link text and swap the expand icon to a compress icon
             expandLink.innerHTML = '<i class="fa-solid fa-compress"></i> Collapse Workspace View';
+            doc('notesArea').focus();
         } else {
-            notesArea.style.minHeight = "240px"; // Snaps back into standard layout orientation
+            // Revert back to the normal dashboard grid look
             expandLink.innerHTML = '<i class="fa-solid fa-expand"></i> Expand Workspace View';
         }
     });

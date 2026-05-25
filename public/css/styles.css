@@ -592,3 +592,36 @@ body[data-theme="cyber-dark"] .btn-primary {
     color: var(--text-muted);
     line-height: 1.6;
 }
+
+/* ==========================================================================
+   THEATER MODE FLUID SCREEN OVERLAY ENGAGEMENTS
+   ========================================================================== */
+/* When theater mode is active, hide the structural sidebar layout entirely */
+body.theater-mode-active .sidebar {
+    display: none !important;
+}
+
+/* Force the main container grid layout to collapse into a single broad column */
+body.theater-mode-active .app-container {
+    grid-template-columns: 1fr !important;
+}
+
+/* Hide the topics card to give the notes card complete screen domination */
+body.theater-mode-active .topics-card,
+body.theater-mode-active .flashcards-full-width,
+body.theater-mode-active .main-header {
+    display: none !important;
+}
+
+/* Stretch the notes card to occupy the complete viewport dimension area gracefully */
+body.theater-mode-active .notes-card {
+    grid-column: 1 / -1 !important;
+    height: calc(100vh - 80px) !important;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Make the textarea fill up the newly gained vertical space */
+body.theater-mode-active #notesArea {
+    height: 100% !important;
+    min-height: calc(100vh - 220px) !important;
+}
