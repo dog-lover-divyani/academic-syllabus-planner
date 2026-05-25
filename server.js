@@ -17,7 +17,7 @@ const upload = multer({
   limits: { fileSize: 10 * 1024 * 1024 } // Upgraded to 10MB to support heavier structural PDFs smoothly
 });
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+const ai = new GoogleGenAI({ apiKey: process.env.EDUTRACK_API_KEY });
 
 app.post('/api/parse-syllabus', upload.single('syllabus'), async (req, res) => {
   try {
