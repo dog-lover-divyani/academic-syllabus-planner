@@ -1,28 +1,24 @@
 const express = require('express');
 const multer = require('multer');
 const pdfParse = require('pdf-parse');
-const { GoogleGenAI } = require('@google/genai'); // Official Google GenAI SDK
+const { GoogleGenAI } = require('@google/genai'); 
 const path = require('path');
 require('dotenv').config();
 
 const app = express();
 
-// Middleware config
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Configure multer to hold files entirely inside temporary RAM buffers
 const storage = multer.memoryStorage();
 const upload = multer({ 
   storage: storage,
-  limits: { fileSize: 5 * 1024 * 1024 } // 5MB Limit Max
+  limits: { fileSize: 10 * 1024 * 1024 } // Upgraded to 10MB to support heavier structural PDFs smoothly
 });
 
-// Initialize the free Gemini API instance
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
-// CORE ROUTE: Handle syllabus text parsing & map structured schedules
 app.post('/api/parse-syllabus', upload.single('syllabus'), async (req, res) => {
   try {
     if (!req.file) {
@@ -34,24 +30,11 @@ app.post('/api/parse-syllabus', upload.single('syllabus'), async (req, res) => {
       return res.status(400).json({ error: "Missing required timeline parameters." });
     }
 
-    // Extract text layout straight out of memory buffer
-    const pdfData = await pdfParse(req.file.buffer);
-    const rawText = pdfData.text;
-
-    // 🔍 INSPECTOR CODE EDITS: This logs what the reading engine finds to your terminal
-    console.log("\n================= EXTRACTED TEXT START =================");
-    console.log(rawText ? rawText.substring(0, 1200) : "--- COMPLETELY EMPTY TEXT ---");
-    console.log("================== EXTRACTED TEXT END ==================\n");
-
-    if (!rawText || rawText.trim().length === 0) {
-      return res.status(400).json({ error: "Could not extract text from this PDF file." });
-    }
-
-    const systemInstructions = `You are an elite academic advisor. Break down this messy syllabus text into a strict week-by-week study timeline.
+    let contentsPayload = [];
+    const systemInstructions = `You are an elite academic advisor. Break down this syllabus into a strict week-by-week study timeline.
     Factor in the student's exam date: ${examDate} and capacity parameters: ${weeklyHours} hours per week.
     You must respond ONLY with a valid JSON object matching the requested schema.`;
 
-    // Enforce strict JSON object output configuration structure
     const jsonSchema = {
       type: "OBJECT",
       properties: {
@@ -74,10 +57,36 @@ app.post('/api/parse-syllabus', upload.single('syllabus'), async (req, res) => {
       required: ["courseName", "totalEstimatedWeeks", "schedule"]
     };
 
-    // Trigger Generation call using the incredibly fast, free gemini-2.5-flash engine
+    // Attempt text extraction first
+    let rawText = "";
+    try {
+      const pdfData = await pdfParse(req.file.buffer);
+      rawText = pdfData.text;
+    } catch (e) {
+      console.log("⚠️ Standard text extraction failed, falling back to direct native processing...");
+    }
+
+    // FALLBACK ENGINE: If text is empty or corrupted, pass the raw file directly to Gemini's multi-modal engine
+    if (!rawText || rawText.trim().length === 0) {
+      console.log("📸 Multi-modal parsing active: Processing document via direct buffer stream.");
+      contentsPayload = [
+        {
+          inlineData: {
+            mimeType: "application/pdf",
+            data: req.file.buffer.toString("base64")
+          }
+        },
+        "Extract curriculum information directly out of this raw document file asset and map the structured layout."
+      ];
+    } else {
+      console.log("📝 Text extraction successful: Processing text payload string directly.");
+      contentsPayload = [`Syllabus text dataset to parse:\n${rawText}`];
+    }
+
+    // Execution request layout matching official SDK design rules
     const aiResponse = await ai.models.generateContent({
       model: "gemini-2.5-flash",
-      contents: `Syllabus text dataset to parse:\n${rawText}`,
+      contents: contentsPayload,
       config: {
         systemInstruction: systemInstructions,
         responseMimeType: "application/json",
@@ -85,14 +94,59 @@ app.post('/api/parse-syllabus', upload.single('syllabus'), async (req, res) => {
       }
     });
 
-    // Parse output string cleanly and respond back to the browser client interface
     const structuredSchedule = JSON.parse(aiResponse.text);
     res.json(structuredSchedule);
 
   } catch (error) {
-    // Detailed error trace output
     console.error("\n❌ Gemini Backend Processing Error:\n", error);
     res.status(500).json({ error: "An error occurred while generating your schedule." });
+  }
+});
+
+// ==========================================================================
+// NEW ROUTE: Generate Dynamic Flashcards From Client Notes
+// ==========================================================================
+app.post('/api/generate-flashcards', async (req, res) => {
+  try {
+    const { notes } = req.body;
+    if (!notes || notes.trim().length < 15) {
+      return res.status(400).json({ error: "Notes content is too short to extract flashcards." });
+    }
+
+    const systemInstructions = `You are a strict active-recall assistant. 
+    Analyze the user's study notes and generate a set of high-yield flashcards.
+    Extract the core definitions, formulas, and concepts. Keep questions concise and answers definitive.
+    You must respond ONLY with a valid JSON array matching the requested schema.`;
+
+    // Strict array schema layout
+    const jsonSchema = {
+      type: "ARRAY",
+      items: {
+        type: "OBJECT",
+        properties: {
+          q: { type: "STRING" }, // The Question
+          a: { type: "STRING" }  // The Answer
+        },
+        required: ["q", "a"]
+      }
+    };
+
+    const aiResponse = await ai.models.generateContent({
+      model: "gemini-2.5-flash",
+      contents: `Generate custom flashcards based on these study notes:\n${notes}`,
+      config: {
+        systemInstruction: systemInstructions,
+        responseMimeType: "application/json",
+        responseSchema: jsonSchema
+      }
+    });
+
+    const flashcardsArray = JSON.parse(aiResponse.text);
+    res.json(flashcardsArray);
+
+  } catch (error) {
+    console.error("❌ Flashcard Generation Error:", error);
+    res.status(500).json({ error: "Failed to generate dynamic flashcards." });
   }
 });
 

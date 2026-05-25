@@ -200,20 +200,53 @@ function resetFlashcardUIComponents() {
     doc('flashcardContainer').classList.remove('flipped');
 }
 
-doc('generateCardsBtn').addEventListener('click', () => {
+// ==========================================================================
+// DYNAMIC ACTIVE RECALL MODULE GENERATION PIPELINE
+// ==========================================================================
+doc('generateCardsBtn').addEventListener('click', async () => {
     const notesValue = doc('notesArea').value.trim();
-    if (notesValue.length < 15) return alert('Type dynamic study notes above so our client module can structure flashcards.');
+    if (notesValue.length < 15) {
+        return alert('Type dynamic study notes above so our client module can structure flashcards.');
+    }
 
-    generatedFlashcards = [
-        { q: "Core Focus Concept Exploration Question?", a: "Extracted and mapped automatically via user-entered contextual lecture inputs." },
-        { q: "Critical Milestone Structural Check?", a: "Review current study specifications to target retention fields precisely." }
-    ];
+    // Visual indicators: show the loading state or disable button
+    doc('generateCardsBtn').disabled = true;
+    doc('generateCardsBtn').innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Generating...';
 
-    activeCardIndex = 0;
-    doc('flashcardEmpty').classList.add('hidden');
-    doc('flashcardContainer').classList.remove('hidden');
-    doc('flashcardControls').classList.remove('hidden');
-    hydrateCardFields();
+    try {
+        const response = await fetch('/api/generate-flashcards', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ notes: notesValue })
+        });
+
+        if (!response.ok) throw new Error('Failed to generate flashcards from server.');
+
+        // Swap the client data state with real Gemini responses!
+        generatedFlashcards = await response.json();
+
+        if (generatedFlashcards.length === 0) {
+            alert("Gemini couldn't find distinct concepts to map. Add more detail to your notes!");
+            resetFlashcardUIComponents();
+            return;
+        }
+
+        activeCardIndex = 0;
+        doc('flashcardEmpty').classList.add('hidden');
+        doc('flashcardContainer').classList.remove('hidden');
+        doc('flashcardControls').classList.remove('hidden');
+        hydrateCardFields();
+
+    } catch (error) {
+        console.error("Flashcard Fetch UI Error:", error);
+        alert('An error occurred while building your cards. Check server logs.');
+        resetFlashcardUIComponents();
+    } finally {
+        doc('generateCardsBtn').disabled = false;
+        doc('generateCardsBtn').innerHTML = '<i class="fa-solid fa-wand-magic-sparkles"></i> Generate Flashcards';
+    }
 });
 
 doc('flashcardContainer').addEventListener('click', () => {
