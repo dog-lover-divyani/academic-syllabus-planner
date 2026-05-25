@@ -278,9 +278,8 @@ doc('prevCardBtn').addEventListener('click', () => {
 });
 
 // ==========================================================================
-// INTELLIGENT WORKSPACE SHORTHAND SUMMARIZATION PIPELINE
+// UPGRADED WORKSPACE OVERWRITE & FORMATTING PIPELINE
 // ==========================================================================
-// Matches your exact HTML button ID: 'aiSummarizeBtn'
 const summarizeBtn = document.getElementById('aiSummarizeBtn');
 
 if (summarizeBtn) {
@@ -292,7 +291,6 @@ if (summarizeBtn) {
             return alert('Please write or paste some concept text inside the notes workspace block first!');
         }
 
-        // Show inline visual spinner loading states
         const originalButtonHtml = summarizeBtn.innerHTML;
         summarizeBtn.disabled = true;
         summarizeBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Processing...';
@@ -300,9 +298,7 @@ if (summarizeBtn) {
         try {
             const response = await fetch('/api/summarize-notes', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ notes: currentNotesText })
             });
 
@@ -310,19 +306,44 @@ if (summarizeBtn) {
 
             const data = await response.json();
             
-            // Gracefully append the clean structured markdown summary inside the text box
-            notesArea.value = `${currentNotesText}\n\n--- 📜 AI EXPANDED SUMMARY ---\n${data.summary}`;
+            // CLEAN UP STAGE: Strip markdown characters (##, **, __, etc.) for a clean readable view
+            let cleanSummary = data.summary
+                .replace(/[#*`_-]/g, '') // Clears headers, bolding stars, and dashes
+                .trim();
+
+            // OVERWRITE: Wipe old messy notes and insert only the clean summary text
+            notesArea.value = `📜 AI EXPANDED SUMMARY\n=====================\n\n${cleanSummary}`;
             
-            // Trigger auto-save to local storage if the button exists
+            // Trigger auto-save persistence engine
             doc('saveNotesBtn')?.click();
-            doc('saveStatus').textContent = "Summary added and saved!";
+            doc('saveStatus').textContent = "Summary populated and old notes cleared!";
 
         } catch (error) {
             console.error("Summarizer UI Failure:", error);
-            alert('An issue occurred while interpreting your study shorthand. Check your server logs.');
+            alert('An issue occurred while interpreting your study shorthand.');
         } finally {
             summarizeBtn.disabled = false;
             summarizeBtn.innerHTML = originalButtonHtml;
+        }
+    });
+}
+
+// ==========================================================================
+// WORKSPACE RESIZE VIEWPORT TOGGLE ENGINE
+// ==========================================================================
+const expandLink = document.getElementById('expandWorkspaceLink');
+if (expandLink) {
+    let isExpanded = false;
+    expandLink.addEventListener('click', () => {
+        const notesArea = doc('notesArea');
+        isExpanded = !isExpanded;
+        
+        if (isExpanded) {
+            notesArea.style.minHeight = "500px"; // Smoothly expands down for comfortable reading
+            expandLink.innerHTML = '<i class="fa-solid fa-compress"></i> Collapse Workspace View';
+        } else {
+            notesArea.style.minHeight = "240px"; // Snaps back into standard layout orientation
+            expandLink.innerHTML = '<i class="fa-solid fa-expand"></i> Expand Workspace View';
         }
     });
 }
