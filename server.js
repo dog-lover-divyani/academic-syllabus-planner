@@ -38,6 +38,11 @@ app.post('/api/parse-syllabus', upload.single('syllabus'), async (req, res) => {
     const pdfData = await pdfParse(req.file.buffer);
     const rawText = pdfData.text;
 
+    // 🔍 INSPECTOR CODE EDITS: This logs what the reading engine finds to your terminal
+    console.log("\n================= EXTRACTED TEXT START =================");
+    console.log(rawText ? rawText.substring(0, 1200) : "--- COMPLETELY EMPTY TEXT ---");
+    console.log("================== EXTRACTED TEXT END ==================\n");
+
     if (!rawText || rawText.trim().length === 0) {
       return res.status(400).json({ error: "Could not extract text from this PDF file." });
     }
@@ -85,7 +90,8 @@ app.post('/api/parse-syllabus', upload.single('syllabus'), async (req, res) => {
     res.json(structuredSchedule);
 
   } catch (error) {
-    console.error("Gemini Backend Processing Error:", error);
+    // Detailed error trace output
+    console.error("\n❌ Gemini Backend Processing Error:\n", error);
     res.status(500).json({ error: "An error occurred while generating your schedule." });
   }
 });
