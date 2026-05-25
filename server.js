@@ -150,6 +150,44 @@ app.post('/api/generate-flashcards', async (req, res) => {
   }
 });
 
+// ==========================================================================
+// NEW ROUTE: Intelligent AI Summary Generator (Handles Messy Shorthand)
+// ==========================================================================
+app.post('/api/summarize-notes', async (req, res) => {
+  try {
+    const { notes } = req.body;
+    if (!notes || notes.trim().length < 10) {
+      return res.status(400).json({ error: "Please write or paste some notes to summarize first." });
+    }
+
+    console.log("⚡ Formulating intelligent, structured summary from study workspace...");
+
+    const systemInstructions = `You are an expert academic editor specializing in study optimization. 
+    The user will provide messy study notes that may contain shortcuts, abbreviations, missing punctuation, or incomplete thoughts.
+    
+    Your mission:
+    1. Understand the student's shorthand shortcuts and expand them cleanly into formal concepts.
+    2. Format the response into a beautifully organized, highly readable summary using clean Markdown structure.
+    3. Use bolding, bullet points, and short distinct sections (e.g., "Core Definition", "Key Takeaways", "Crucial Milestones").
+    Keep it actionable, crisp, and completely optimized for fast studying. Do not return raw code or JSON wrap this response; return raw text with standard markdown layout markers.`;
+
+    const aiResponse = await ai.models.generateContent({
+      model: "gemini-2.5-flash",
+      contents: `Deconstruct, expand shorthand, and summarize these messy student notes:\n${notes}`,
+      config: {
+        systemInstruction: systemInstructions
+        // Not enforcing JSON schema here because standard Markdown strings offer better structural notes layouts!
+      }
+    });
+
+    res.json({ summary: aiResponse.text });
+
+  } catch (error) {
+    console.error("❌ Summarizer Processing Error:", error);
+    res.status(500).json({ error: "Failed to generate AI summary context." });
+  }
+});
+
 module.exports = app;
 
 if (process.env.NODE_ENV !== 'production') {
