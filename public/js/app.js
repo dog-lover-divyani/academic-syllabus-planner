@@ -280,13 +280,10 @@ doc('prevCardBtn').addEventListener('click', () => {
 // ==========================================================================
 // INTELLIGENT WORKSPACE SHORTHAND SUMMARIZATION PIPELINE
 // ==========================================================================
-// Select your target DOM button component cleanly (Ensure your button HTML has id="summarizeBtn")
-const summarizeBtn = document.getElementById('summarizeBtn') || document.querySelector('.card-header button') || document.querySelector('button[class*="Summarize"]');
+// Matches your exact HTML button ID: 'aiSummarizeBtn'
+const summarizeBtn = document.getElementById('aiSummarizeBtn');
 
 if (summarizeBtn) {
-    // Ensure the element has an explicit ID matching our listener tracker
-    summarizeBtn.id = 'summarizeBtn';
-
     summarizeBtn.addEventListener('click', async () => {
         const notesArea = doc('notesArea');
         const currentNotesText = notesArea.value.trim();
@@ -313,10 +310,10 @@ if (summarizeBtn) {
 
             const data = await response.json();
             
-            // Gracefully overwrite or append the polished structural summaries inside the text box!
+            // Gracefully append the clean structured markdown summary inside the text box
             notesArea.value = `${currentNotesText}\n\n--- 📜 AI EXPANDED SUMMARY ---\n${data.summary}`;
             
-            // Trigger auto-save to local storage if yours is wired up
+            // Trigger auto-save to local storage if the button exists
             doc('saveNotesBtn')?.click();
             doc('saveStatus').textContent = "Summary added and saved!";
 
