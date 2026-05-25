@@ -276,3 +276,56 @@ doc('prevCardBtn').addEventListener('click', () => {
         hydrateCardFields();
     }
 });
+
+// ==========================================================================
+// INTELLIGENT WORKSPACE SHORTHAND SUMMARIZATION PIPELINE
+// ==========================================================================
+// Select your target DOM button component cleanly (Ensure your button HTML has id="summarizeBtn")
+const summarizeBtn = document.getElementById('summarizeBtn') || document.querySelector('.card-header button') || document.querySelector('button[class*="Summarize"]');
+
+if (summarizeBtn) {
+    // Ensure the element has an explicit ID matching our listener tracker
+    summarizeBtn.id = 'summarizeBtn';
+
+    summarizeBtn.addEventListener('click', async () => {
+        const notesArea = doc('notesArea');
+        const currentNotesText = notesArea.value.trim();
+
+        if (currentNotesText.length < 10) {
+            return alert('Please write or paste some concept text inside the notes workspace block first!');
+        }
+
+        // Show inline visual spinner loading states
+        const originalButtonHtml = summarizeBtn.innerHTML;
+        summarizeBtn.disabled = true;
+        summarizeBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Processing...';
+
+        try {
+            const response = await fetch('/api/summarize-notes', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ notes: currentNotesText })
+            });
+
+            if (!response.ok) throw new Error('Summarization system endpoint failure.');
+
+            const data = await response.json();
+            
+            // Gracefully overwrite or append the polished structural summaries inside the text box!
+            notesArea.value = `${currentNotesText}\n\n--- 📜 AI EXPANDED SUMMARY ---\n${data.summary}`;
+            
+            // Trigger auto-save to local storage if yours is wired up
+            doc('saveNotesBtn')?.click();
+            doc('saveStatus').textContent = "Summary added and saved!";
+
+        } catch (error) {
+            console.error("Summarizer UI Failure:", error);
+            alert('An issue occurred while interpreting your study shorthand. Check your server logs.');
+        } finally {
+            summarizeBtn.disabled = false;
+            summarizeBtn.innerHTML = originalButtonHtml;
+        }
+    });
+}
