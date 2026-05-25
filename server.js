@@ -3,22 +3,30 @@ const multer = require('multer');
 const pdfParse = require('pdf-parse');
 const { GoogleGenAI } = require('@google/genai'); 
 const path = require('path');
+const fs = require('fs'); // Built-in filesystem to act as our database driver
 require('dotenv').config();
 
 const app = express();
 
+// Middleware config
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
 
+// Path to our local JSON database file
+const HISTORY_FILE = path.join(__dirname, 'history.json');
+
+// Configure multer for temporary memory buffers
 const storage = multer.memoryStorage();
 const upload = multer({ 
   storage: storage,
-  limits: { fileSize: 10 * 1024 * 1024 } // Upgraded to 10MB to support heavier structural PDFs smoothly
+  limits: { fileSize: 10 * 1024 * 1024 } // 10MB Limit Max
 });
 
+// Initialize the free Gemini API instance using your renamed key token
 const ai = new GoogleGenAI({ apiKey: process.env.EDUTRACK_API_KEY });
 
+// ROUTE 1: Handle syllabus text parsing & map structured schedules
 app.post('/api/parse-syllabus', upload.single('syllabus'), async (req, res) => {
   try {
     if (!req.file) {
@@ -57,18 +65,16 @@ app.post('/api/parse-syllabus', upload.single('syllabus'), async (req, res) => {
       required: ["courseName", "totalEstimatedWeeks", "schedule"]
     };
 
-    // Attempt text extraction first
     let rawText = "";
     try {
       const pdfData = await pdfParse(req.file.buffer);
       rawText = pdfData.text;
     } catch (e) {
-      console.log("⚠️ Standard text extraction failed, falling back to direct native processing...");
+      console.log("⚠️ Standard text extraction failed, using fallback...");
     }
 
-    // FALLBACK ENGINE: If text is empty or corrupted, pass the raw file directly to Gemini's multi-modal engine
     if (!rawText || rawText.trim().length === 0) {
-      console.log("📸 Multi-modal parsing active: Processing document via direct buffer stream.");
+      console.log("📸 Processing document visually via direct base64 stream.");
       contentsPayload = [
         {
           inlineData: {
@@ -79,11 +85,10 @@ app.post('/api/parse-syllabus', upload.single('syllabus'), async (req, res) => {
         "Extract curriculum information directly out of this raw document file asset and map the structured layout."
       ];
     } else {
-      console.log("📝 Text extraction successful: Processing text payload string directly.");
+      console.log("📝 Processing text payload string directly.");
       contentsPayload = [`Syllabus text dataset to parse:\n${rawText}`];
     }
 
-    // Execution request layout matching official SDK design rules
     const aiResponse = await ai.models.generateContent({
       model: "gemini-2.5-flash",
       contents: contentsPayload,
@@ -95,17 +100,55 @@ app.post('/api/parse-syllabus', upload.single('syllabus'), async (req, res) => {
     });
 
     const structuredSchedule = JSON.parse(aiResponse.text);
+
+    // PERSISTENCE AGENT: Automatically commit this schedule into our history file array
+    try {
+      let currentHistory = [];
+      if (fs.existsSync(HISTORY_FILE)) {
+        const fileData = fs.readFileSync(HISTORY_FILE, 'utf-8');
+        currentHistory = JSON.parse(fileData || '[]');
+      }
+      
+      // Inject meta tags for frontend referencing
+      const historicalEntry = {
+        id: Date.now().toString(), // Clean timestamp ID string
+        timestamp: new Date().toLocaleDateString(),
+        examDate: examDate,
+        weeklyHours: weeklyHours,
+        data: structuredSchedule
+      };
+      
+      currentHistory.unshift(historicalEntry); // Add to the top of list
+      fs.writeFileSync(HISTORY_FILE, JSON.stringify(currentHistory, null, 2), 'utf-8');
+      console.log(`💾 Persisted "${structuredSchedule.courseName}" plan to history database entry point.`);
+    } catch (fsErr) {
+      console.error("⚠️ History persistence wrapper failed:", fsErr);
+    }
+
     res.json(structuredSchedule);
 
   } catch (error) {
-    console.error("\n❌ Gemini Backend Processing Error:\n", error);
+    console.error("❌ Gemini Syllabus parsing error:", error);
     res.status(500).json({ error: "An error occurred while generating your schedule." });
   }
 });
 
-// ==========================================================================
-// NEW ROUTE: Generate Dynamic Flashcards From Client Notes
-// ==========================================================================
+// ROUTE 2: Fetch full historical schedule array records
+app.get('/api/history', (req, res) => {
+  try {
+    if (!fs.existsSync(HISTORY_FILE)) {
+      return res.json([]);
+    }
+    const fileData = fs.readFileSync(HISTORY_FILE, 'utf-8');
+    const history = JSON.parse(fileData || '[]');
+    res.json(history);
+  } catch (error) {
+    console.error("❌ History retrieval error:", error);
+    res.status(500).json({ error: "Failed to read history logs." });
+  }
+});
+
+// ROUTE 3: Generate dynamic flashcards based on user notes
 app.post('/api/generate-flashcards', async (req, res) => {
   try {
     const { notes } = req.body;
@@ -118,14 +161,13 @@ app.post('/api/generate-flashcards', async (req, res) => {
     Extract the core definitions, formulas, and concepts. Keep questions concise and answers definitive.
     You must respond ONLY with a valid JSON array matching the requested schema.`;
 
-    // Strict array schema layout
     const jsonSchema = {
       type: "ARRAY",
       items: {
         type: "OBJECT",
         properties: {
-          q: { type: "STRING" }, // The Question
-          a: { type: "STRING" }  // The Answer
+          q: { type: "STRING" },
+          a: { type: "STRING" }
         },
         required: ["q", "a"]
       }
@@ -141,47 +183,32 @@ app.post('/api/generate-flashcards', async (req, res) => {
       }
     });
 
-    const flashcardsArray = JSON.parse(aiResponse.text);
-    res.json(flashcardsArray);
-
+    res.json(JSON.parse(aiResponse.text));
   } catch (error) {
-    console.error("❌ Flashcard Generation Error:", error);
+    console.error("❌ Flashcard Generation Endpoint Error:", error);
     res.status(500).json({ error: "Failed to generate dynamic flashcards." });
   }
 });
 
-// ==========================================================================
-// NEW ROUTE: Intelligent AI Summary Generator (Handles Messy Shorthand)
-// ==========================================================================
+// ROUTE 4: Intelligent AI Summary Generator (Handles Messy Shorthand)
 app.post('/api/summarize-notes', async (req, res) => {
   try {
     const { notes } = req.body;
     if (!notes || notes.trim().length < 10) {
-      return res.status(400).json({ error: "Please write or paste some notes to summarize first." });
+      return res.status(400).json({ error: "Please write some notes to summarize first." });
     }
 
-    console.log("⚡ Formulating intelligent, structured summary from study workspace...");
-
     const systemInstructions = `You are an expert academic editor specializing in study optimization. 
-    The user will provide messy study notes that may contain shortcuts, abbreviations, missing punctuation, or incomplete thoughts.
-    
-    Your mission:
-    1. Understand the student's shorthand shortcuts and expand them cleanly into formal concepts.
-    2. Format the response into a beautifully organized, highly readable summary using clean Markdown structure.
-    3. Use bolding, bullet points, and short distinct sections (e.g., "Core Definition", "Key Takeaways", "Crucial Milestones").
-    Keep it actionable, crisp, and completely optimized for fast studying. Do not return raw code or JSON wrap this response; return raw text with standard markdown layout markers.`;
+    The user will provide messy study notes that may contain shortcuts, abbreviations, or incomplete thoughts.
+    Expand shorthand definitions cleanly and convert the text entirely into a highly readable, clear plain-text layout. Do not output markdown asterisks or hash symbols.`;
 
     const aiResponse = await ai.models.generateContent({
       model: "gemini-2.5-flash",
       contents: `Deconstruct, expand shorthand, and summarize these messy student notes:\n${notes}`,
-      config: {
-        systemInstruction: systemInstructions
-        // Not enforcing JSON schema here because standard Markdown strings offer better structural notes layouts!
-      }
+      config: { systemInstruction: systemInstructions }
     });
 
     res.json({ summary: aiResponse.text });
-
   } catch (error) {
     console.error("❌ Summarizer Processing Error:", error);
     res.status(500).json({ error: "Failed to generate AI summary context." });
