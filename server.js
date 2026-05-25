@@ -111,14 +111,14 @@ app.post('/api/parse-syllabus', upload.single('syllabus'), async (req, res) => {
       
       // Inject meta tags for frontend referencing
       const historicalEntry = {
-        id: Date.now().toString(), // Clean timestamp ID string
+        id: Date.now().toString(), 
         timestamp: new Date().toLocaleDateString(),
         examDate: examDate,
         weeklyHours: weeklyHours,
         data: structuredSchedule
       };
       
-      currentHistory.unshift(historicalEntry); // Add to the top of list
+      currentHistory.unshift(historicalEntry); 
       fs.writeFileSync(HISTORY_FILE, JSON.stringify(currentHistory, null, 2), 'utf-8');
       console.log(`💾 Persisted "${structuredSchedule.courseName}" plan to history database entry point.`);
     } catch (fsErr) {
@@ -209,7 +209,6 @@ app.post('/api/summarize-notes', async (req, res) => {
       config: { systemInstruction: systemInstructions }
     });
 
-    // Extract the raw text result safely
     const plainTextSummary = aiResponse.text || "Could not generate summary text.";
     res.json({ summary: plainTextSummary });
 
@@ -217,4 +216,15 @@ app.post('/api/summarize-notes', async (req, res) => {
     console.error("❌ Summarizer Processing Error:", error);
     res.status(500).json({ error: "Failed to generate AI summary context." });
   }
+});
+
+module.exports = app;
+
+// ==========================================================================
+// GUARANTEED LOCAL LISTENER BOOT ENGINE
+// ==========================================================================
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log(`\n🚀 EduTrack Engine Successfully Armed!`);
+  console.log(`Local development hub active on: http://localhost:${PORT}\n`);
 });

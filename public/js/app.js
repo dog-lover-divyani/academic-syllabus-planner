@@ -26,12 +26,11 @@ const views = {
 // ==========================================================================
 // THEME DYNAMIC SELECTOR SPECIFICATION ENGINE
 // ==========================================================================
-// Checks for a previously saved theme preference, defaulting to your clean 'light-default' style
 const savedTheme = localStorage.getItem('app-user-theme') || 'light-default';
 document.body.setAttribute('data-theme', savedTheme);
-views.themeSelector.value = savedTheme;
+if (views.themeSelector) views.themeSelector.value = savedTheme;
 
-views.themeSelector.addEventListener('change', (e) => {
+views.themeSelector?.addEventListener('change', (e) => {
     const selectedValue = e.target.value;
     document.body.setAttribute('data-theme', selectedValue);
     localStorage.setItem('app-user-theme', selectedValue);
@@ -40,8 +39,8 @@ views.themeSelector.addEventListener('change', (e) => {
 // ==========================================================================
 // FILE INPUT CONTROLS & SELECTIONS HANDLERS
 // ==========================================================================
-forms.dropZone.addEventListener('click', () => forms.fileInput.click());
-forms.fileInput.addEventListener('change', (e) => {
+forms.dropZone?.addEventListener('click', () => forms.fileInput.click());
+forms.fileInput?.addEventListener('change', (e) => {
     const file = e.target.files[0];
     forms.fileName.textContent = file ? file.name : "No file selected";
 });
@@ -49,21 +48,17 @@ forms.fileInput.addEventListener('change', (e) => {
 // ==========================================================================
 // FORM TRANSMISSION PAYLOAD REFINEMENT
 // ==========================================================================
-forms.setup.addEventListener('submit', async (e) => {
+forms.setup?.addEventListener('submit', async (e) => {
     e.preventDefault();
     
     const file = forms.fileInput.files[0];
     if (!file) return alert('Please assign a core PDF syllabus asset first.');
 
-    // Construct the payload with exact matching key tokens
     const formData = new FormData();
-    formData.append('syllabus', file); // MUST match upload.single('syllabus') exactly
+    formData.append('syllabus', file); 
     formData.append('examDate', doc('examDate').value);
     formData.append('weeklyHours', doc('weeklyHours').value);
 
-    // ... balance of your loading toggle and fetch calls continue below ...
-
-    // Swap states into interactive loading configurations
     views.spinner.classList.remove('hidden');
     forms.submitBtn.disabled = true;
     views.empty.classList.remove('hidden');
@@ -85,6 +80,9 @@ forms.setup.addEventListener('submit', async (e) => {
         renderTimelineNavigation(currentPlanData);
         switchActiveWeekWorkspace(0); 
         calculateOverallProgress();
+        
+        // Refresh the sidebar history listing after saving the new plan
+        setTimeout(streamHistoricalDatabaseLogs, 1000);
 
     } catch (error) {
         console.error("UI Core Thread Error:", error);
@@ -104,7 +102,7 @@ function renderTimelineNavigation(plan) {
 
     plan.schedule.forEach((item, index) => {
         const li = document.createElement('li');
-        li.className = `week-item ${index === 0 ? 'active' : ''}`;
+        li.className = `week-item ${index === selectedWeekIndex ? 'active' : ''}`;
         li.innerHTML = `<span>Week ${item.week}</span><i class="fa-solid fa-chevron-right"></i>`;
         
         li.addEventListener('click', () => {
@@ -180,7 +178,7 @@ function calculateOverallProgress() {
     doc('progressFill').style.width = `${outputRatio}%`;
 }
 
-doc('saveNotesBtn').addEventListener('click', () => {
+doc('saveNotesBtn')?.addEventListener('click', () => {
     if (!currentPlanData) return;
     const targetModule = currentPlanData.schedule[selectedWeekIndex];
     const storageNotesKey = `notes_course_${views.courseTitle.textContent}_week_${targetModule.week}`;
@@ -203,28 +201,24 @@ function resetFlashcardUIComponents() {
 // ==========================================================================
 // DYNAMIC ACTIVE RECALL MODULE GENERATION PIPELINE
 // ==========================================================================
-doc('generateCardsBtn').addEventListener('click', async () => {
+doc('generateCardsBtn')?.addEventListener('click', async () => {
     const notesValue = doc('notesArea').value.trim();
     if (notesValue.length < 15) {
         return alert('Type dynamic study notes above so our client module can structure flashcards.');
     }
 
-    // Visual indicators: show the loading state or disable button
     doc('generateCardsBtn').disabled = true;
     doc('generateCardsBtn').innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Generating...';
 
     try {
         const response = await fetch('/api/generate-flashcards', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ notes: notesValue })
         });
 
         if (!response.ok) throw new Error('Failed to generate flashcards from server.');
 
-        // Swap the client data state with real Gemini responses!
         generatedFlashcards = await response.json();
 
         if (generatedFlashcards.length === 0) {
@@ -249,7 +243,7 @@ doc('generateCardsBtn').addEventListener('click', async () => {
     }
 });
 
-doc('flashcardContainer').addEventListener('click', () => {
+doc('flashcardContainer')?.addEventListener('click', () => {
     doc('flashcardContainer').classList.toggle('flipped');
 });
 
@@ -263,14 +257,14 @@ function hydrateCardFields() {
     }, 150);
 }
 
-doc('nextCardBtn').addEventListener('click', () => {
+doc('nextCardBtn')?.addEventListener('click', () => {
     if (activeCardIndex < generatedFlashcards.length - 1) {
         activeCardIndex++;
         hydrateCardFields();
     }
 });
 
-doc('prevCardBtn').addEventListener('click', () => {
+doc('prevCardBtn')?.addEventListener('click', () => {
     if (activeCardIndex > 0) {
         activeCardIndex--;
         hydrateCardFields();
@@ -282,75 +276,65 @@ doc('prevCardBtn').addEventListener('click', () => {
 // ==========================================================================
 const summarizeBtn = document.getElementById('aiSummarizeBtn');
 
-if (summarizeBtn) {
-    summarizeBtn.addEventListener('click', async () => {
-        const notesArea = doc('notesArea');
-        const currentNotesText = notesArea.value.trim();
+summarizeBtn?.addEventListener('click', async () => {
+    const notesArea = doc('notesArea');
+    const currentNotesText = notesArea.value.trim();
 
-        if (currentNotesText.length < 10) {
-            return alert('Please write or paste some concept text inside the notes workspace block first!');
-        }
+    if (currentNotesText.length < 10) {
+        return alert('Please write or paste some concept text inside the notes workspace block first!');
+    }
 
-        const originalButtonHtml = summarizeBtn.innerHTML;
-        summarizeBtn.disabled = true;
-        summarizeBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Processing...';
+    const originalButtonHtml = summarizeBtn.innerHTML;
+    summarizeBtn.disabled = true;
+    summarizeBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Processing...';
 
-        try {
-            const response = await fetch('/api/summarize-notes', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ notes: currentNotesText })
-            });
+    try {
+        const response = await fetch('/api/summarize-notes', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ notes: currentNotesText })
+        });
 
-            if (!response.ok) throw new Error('Summarization system endpoint failure.');
+        if (!response.ok) throw new Error('Summarization system endpoint failure.');
 
-            const data = await response.json();
-            
-            // CLEAN UP STAGE: Strip markdown characters (##, **, __, etc.) for a clean readable view
-            let cleanSummary = data.summary
-                .replace(/[#*`_-]/g, '') // Clears headers, bolding stars, and dashes
-                .trim();
+        const data = await response.json();
+        
+        let cleanSummary = data.summary
+            .replace(/[#*`_-]/g, '') 
+            .trim();
 
-            // OVERWRITE: Wipe old messy notes and insert only the clean summary text
-            notesArea.value = `📜 AI EXPANDED SUMMARY\n=====================\n\n${cleanSummary}`;
-            
-            // Trigger auto-save persistence engine
-            doc('saveNotesBtn')?.click();
-            doc('saveStatus').textContent = "Summary populated and old notes cleared!";
+        notesArea.value = `📜 AI EXPANDED SUMMARY\n=====================\n\n${cleanSummary}`;
+        
+        doc('saveNotesBtn')?.click();
+        doc('saveStatus').textContent = "Summary populated and old notes cleared!";
 
-        } catch (error) {
-            console.error("Summarizer UI Failure:", error);
-            alert('An issue occurred while interpreting your study shorthand.');
-        } finally {
-            summarizeBtn.disabled = false;
-            summarizeBtn.innerHTML = originalButtonHtml;
-        }
-    });
-}
+    } catch (error) {
+        console.error("Summarizer UI Failure:", error);
+        alert('An issue occurred while interpreting your study shorthand.');
+    } finally {
+        summarizeBtn.disabled = false;
+        summarizeBtn.innerHTML = originalButtonHtml;
+    }
+});
 
 // ==========================================================================
 // WORKSPACE THEATER MODE FULL-SCREEN TOGGLE ENGINE
 // ==========================================================================
 const expandLink = document.getElementById('expandWorkspaceLink');
 
-if (expandLink) {
-    expandLink.addEventListener('click', () => {
-        // Toggle the theater mode class directly onto the global body tag
-        const theaterModeActive = document.body.classList.toggle('theater-mode-active');
-        
-        if (theaterModeActive) {
-            // Update the link text and swap the expand icon to a compress icon
-            expandLink.innerHTML = '<i class="fa-solid fa-compress"></i> Collapse Workspace View';
-            doc('notesArea').focus();
-        } else {
-            // Revert back to the normal dashboard grid look
-            expandLink.innerHTML = '<i class="fa-solid fa-expand"></i> Expand Workspace View';
-        }
-    });
-}
+expandLink?.addEventListener('click', () => {
+    const theaterModeActive = document.body.classList.toggle('theater-mode-active');
+    
+    if (theaterModeActive) {
+        expandLink.innerHTML = '<i class="fa-solid fa-compress"></i> Collapse Workspace View';
+        doc('notesArea').focus();
+    } else {
+        expandLink.innerHTML = '<i class="fa-solid fa-expand"></i> Expand Workspace View';
+    }
+});
 
 // ==========================================================================
-// DYNAMIC SERVER HISTORY STREAMING ARCHITECTURE (FOOLPROOF ENGINE)
+// DYNAMIC SERVER HISTORY STREAMING ARCHITECTURE (FULLY ALIGNED CONTEXT)
 // ==========================================================================
 async function streamHistoricalDatabaseLogs() {
     const historyContainer = document.getElementById('historyPlanList');
@@ -367,49 +351,37 @@ async function streamHistoricalDatabaseLogs() {
             return;
         }
 
-        // Clear placeholders cleanly
         historyContainer.innerHTML = '';
 
         databaseRecords.forEach(record => {
+            if (!record.data) return;
+
             const planItem = document.createElement('li');
             planItem.className = 'history-item-link';
             planItem.style.cssText = 'padding: 8px 12px; border-radius: 6px; background: rgba(0,0,0,0.04); font-size: 12px; cursor: pointer; display: flex; flex-direction: column; transition: all 0.2s; margin-bottom: 4px; list-style: none;';
             
             planItem.innerHTML = `
-                <strong style="color: var(--accent);">${record.data?.courseName || 'Unparsed Course Plan'}</strong>
-                <span style="font-size: 10px; opacity: 0.7; margin-top: 2px;"><i class="fa-solid fa-calendar"></i> ${record.timestamp} — Weeks: ${record.data?.totalEstimatedWeeks || '--'}</span>
+                <strong style="color: var(--accent);">${record.data.courseName || 'Unparsed Course Plan'}</strong>
+                <span style="font-size: 10px; opacity: 0.7; margin-top: 2px;"><i class="fa-solid fa-calendar"></i> ${record.timestamp} — Weeks: ${record.data.totalEstimatedWeeks || '--'}</span>
             `;
 
             planItem.addEventListener('mouseenter', () => planItem.style.background = 'rgba(0,0,0,0.08)');
             planItem.addEventListener('mouseleave', () => planItem.style.background = 'rgba(0,0,0,0.04)');
 
-            // SAFE UI WORKSPACE HYDRATION
+            // PERFECT ALIGNED UI HYDRATION ON CLICK
             planItem.addEventListener('click', () => {
-                if (!record.data) return alert("Historical data payload is corrupted.");
-                
-                // Sync global variable if it exists in your app context
-                if (typeof activeScheduleData !== 'undefined') activeScheduleData = record.data;
-                
-                // Safe element updates using optional chaining
-                const courseTitleEl = document.getElementById('courseTitle');
-                if (courseTitleEl) courseTitleEl.textContent = record.data.courseName;
+                // 1. Overwrite central script core state graph
+                currentPlanData = record.data;
+                selectedWeekIndex = 0; 
 
-                // Safely toggle display layouts without breaking execution loops
-                document.getElementById('emptyWorkspace')?.classList.add('hidden');
-                document.getElementById('activeWorkspace')?.classList.remove('hidden');
+                // 2. Clear holding viewport view states
+                views.empty.classList.add('hidden');
+                views.active.classList.remove('hidden');
 
-                // Execute core ui re-rendering pipelines dynamically
-                if (typeof renderTimelineWeeks === 'function') {
-                    renderTimelineWeeks(record.data);
-                } else if (typeof renderWeeksMenu === 'function') {
-                    renderWeeksMenu(record.data);
-                } else if (typeof displaySchedule === 'function') {
-                    displaySchedule(record.data);
-                } else {
-                    console.log("History selected. Please refresh or select a specific week link manually.");
-                }
-                
-                alert(`Loaded workspace for: ${record.data.courseName}`);
+                // 3. Re-trigger rendering pipelines
+                renderTimelineNavigation(currentPlanData);
+                switchActiveWeekWorkspace(0); 
+                calculateOverallProgress();
             });
 
             historyContainer.appendChild(planItem);
@@ -420,5 +392,5 @@ async function streamHistoricalDatabaseLogs() {
     }
 }
 
-// Fire the log load sequence immediately when DOM structure mounts
+// Attach lifecycle boots
 document.addEventListener('DOMContentLoaded', streamHistoricalDatabaseLogs);
