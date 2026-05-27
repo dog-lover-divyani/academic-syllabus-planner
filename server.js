@@ -57,9 +57,17 @@ passport.deserializeUser(async (id, done) => {
 });
 
 // AUTH SHIELD MIDDLEWARE: Prevents logged-out users from touching secure data endpoints
+// ❌ OLD WAY CAUSING THE CRASH:
+// const ensureAuthenticated = (req, res, next) => {
+//   if (req.isAuthenticated()) return next();
+//   res.status(401).json({ error: "Unauthorized access. Please register or log in first." });
+// };
+
+// ✅ NEW CORRECT WAY:
 const ensureAuthenticated = (req, res, next) => {
   if (req.isAuthenticated()) return next();
-  res.status(401).json({ error: "Unauthorized access. Please register or log in first." });
+  // Return a clean, structured JSON data block so the frontend fetch can intercept it gracefully
+  res.status(401).json({ loggedIn: false, error: "Unauthorized session state." });
 };
 
 // Configure Multer for File Upload Buffers
@@ -101,8 +109,11 @@ app.post('/api/auth/logout', (req, res, next) => {
 });
 
 app.get('/api/auth/session', (req, res) => {
-  if (req.isAuthenticated()) res.json({ loggedIn: true, username: req.user.username });
-  else res.json({ loggedIn: false });
+  if (req.isAuthenticated()) {
+    res.json({ loggedIn: true, username: req.user.username });
+  } else {
+    res.json({ loggedIn: false });
+  }
 });
 
 // ==========================================================================
