@@ -51,17 +51,24 @@ forms.fileInput?.addEventListener('change', (e) => {
 async function verifyActiveSessionContext() {
     try {
         const response = await fetch('/api/auth/session');
+        
+        // SAFE CATCH: If the server returns a 401 or anything non-OK, it means user needs to log in
+        if (!response.ok) {
+            document.getElementById('authOverlay')?.classList.remove('hidden');
+            return;
+        }
+        
         const state = await response.json();
         
-        if (state.loggedIn) {
+        if (state && state.loggedIn) {
             document.getElementById('authOverlay')?.classList.add('hidden');
-            // Session validated successfully! Go ahead and stream their local database history records down
-            streamHistoricalDatabaseLogs();
+            if (typeof streamHistoricalDatabaseLogs === 'function') streamHistoricalDatabaseLogs();
         } else {
             document.getElementById('authOverlay')?.classList.remove('hidden');
         }
     } catch (err) {
-        console.error("Session connection check failed:", err);
+        console.log("Standby mode active: Waiting for credentials login state.");
+        document.getElementById('authOverlay')?.classList.remove('hidden');
     }
 }
 
@@ -434,3 +441,13 @@ async function streamHistoricalDatabaseLogs() {
 
 // Fire the session verify check right when the page boots up
 document.addEventListener('DOMContentLoaded', verifyActiveSessionContext);
+
+// Google Button UI Effect
+const googleBtn = document.getElementById('googleLoginBtn');
+if (googleBtn) {
+    googleBtn.addEventListener('mouseenter', () => googleBtn.style.background = '#f8f9fa');
+    googleBtn.addEventListener('mouseleave', () => googleBtn.style.background = 'white');
+    googleBtn.addEventListener('click', () => {
+        alert("Google OAuth connection requires cloud client configuration parameters. Let's finish local database signups first!");
+    });
+}
