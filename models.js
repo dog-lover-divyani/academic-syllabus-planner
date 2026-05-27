@@ -10,13 +10,16 @@ const UserSchema = new mongoose.Schema({
 });
 
 // Security Guard Hook: Automatically hash/encrypt passwords before saving them
-UserSchema.pre('save', async function(next) {
-    if (!this.isModified('password')) return next();
+UserSchema.pre('save', async function() {
+    // If the user didn't modify their password text, stop executing right here
+    if (!this.isModified('password')) return;
+
     try {
         const salt = await bcrypt.genSalt(10);
         this.password = await bcrypt.hash(this.password, salt);
-        next();
-    } catch (err) { next(err); }
+    } catch (err) {
+        throw new Error("Password encryption layer failed: " + err.message);
+    }
 });
 
 // Secure Matcher: Safely check if a login password matches the encrypted database password
@@ -42,4 +45,5 @@ const StudyPlanSchema = new mongoose.Schema({
 const User = mongoose.model('User', UserSchema);
 const StudyPlan = mongoose.model('StudyPlan', StudyPlanSchema);
 
+// Explicitly export both models as an object bundle
 module.exports = { User, StudyPlan };

@@ -9,38 +9,39 @@ const passport = require('passport');
 const LocalStrategy = require('passport-local').Strategy;
 require('dotenv').config();
 
-// Import the database models we created in Step 4
+// Destructure model dependencies explicitly
 const { User, StudyPlan } = require('./models');
 
 const app = express();
 
 // ==========================================================================
-// LOCAL DATABASE CONNECTION
+// LOCAL DATABASE CONNECTIVITY ENGINE
 // ==========================================================================
 mongoose.connect(process.env.MONGODB_URI)
-  .then(() => console.log('🍃 Connected cleanly to local MongoDB via Compass address.'))
+  .then(() => console.log('🍃 Connected cleanly to local MongoDB database instance.'))
   .catch(err => console.error('❌ MongoDB local connection failure:', err));
 
-// Middleware config
+// Middleware configuration
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Configure Protected Session Cookies
+// ==========================================================================
+// PASSPORT SINGLE INITIALIZATION BLOCK (CLEANED & UNIFIED)
+// ==========================================================================
 app.use(session({
   secret: process.env.SESSION_SECRET || 'fallback_secret_key',
   resave: false,
   saveUninitialized: false,
-  cookie: { maxAge: 24 * 60 * 60 * 1000 } // Session lasts 24 hours
+  cookie: { maxAge: 24 * 60 * 60 * 1000 } // Session duration: 24h
 }));
 
-// Initialize Passport Strategies
 app.use(passport.initialize());
 app.use(passport.session());
 
 passport.use(new LocalStrategy(async (username, password, done) => {
   try {
-    const user = await User.findOne({ username });
+    const user = await User.findOne({ username: username.toLowerCase().trim() });
     if (!user) return done(null, false, { message: 'Incorrect username.' });
     
     const isMatch = await user.comparePassword(password);
@@ -56,49 +57,57 @@ passport.deserializeUser(async (id, done) => {
   catch (err) { done(err); }
 });
 
-// AUTH SHIELD MIDDLEWARE: Prevents logged-out users from touching secure data endpoints
-// ❌ OLD WAY CAUSING THE CRASH:
-// const ensureAuthenticated = (req, res, next) => {
-//   if (req.isAuthenticated()) return next();
-//   res.status(401).json({ error: "Unauthorized access. Please register or log in first." });
-// };
-
-// ✅ NEW CORRECT WAY:
+// AUTH SHIELD MIDDLEWARE: Prevents unauthenticated users from using core AI routes
 const ensureAuthenticated = (req, res, next) => {
   if (req.isAuthenticated()) return next();
-  // Return a clean, structured JSON data block so the frontend fetch can intercept it gracefully
-  res.status(401).json({ loggedIn: false, error: "Unauthorized session state." });
+  // Safe JSON error response prevents frontend crash strings!
+  res.status(401).json({ loggedIn: false, error: "Unauthorized access path." });
 };
 
-// Configure Multer for File Upload Buffers
+// Configure File Upload Processing
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
-
-// Initialize Gemini API via your custom key name
 const ai = new GoogleGenAI({ apiKey: process.env.EDUTRACK_API_KEY });
 
 // ==========================================================================
-// ENCRYPTED AUTHENTICATION API ENDPOINTS
+// USER VALIDATION & SIGNUP ROUTES
 // ==========================================================================
 app.post('/api/auth/register', async (req, res) => {
   try {
     const { username, password } = req.body;
-    if (!username || !password) return res.status(400).json({ error: "Provide both username and password." });
+    if (!username || !password) {
+      return res.status(400).json({ error: "Provide username and password metrics." });
+    }
     
-    const existingUser = await User.findOne({ username });
-    if (existingUser) return res.status(400).json({ error: "Username already taken." });
+    const cleanUsername = username.toLowerCase().trim();
+    const existingUser = await User.findOne({ username: cleanUsername });
+    if (existingUser) {
+      return res.status(400).json({ error: "Username already assigned." });
+    }
 
-    const newUser = new User({ username, password });
+    const newUser = new User({ username: cleanUsername, password });
     await newUser.save();
     
     req.login(newUser, err => {
-      if (err) return res.status(500).json({ error: "Auto-login engine failed." });
-      res.json({ success: true, user: { username: newUser.username } });
+      if (err) return res.status(500).json({ error: "Auto-login engagement failed." });
+      return res.json({ success: true, user: { username: newUser.username } });
     });
-  } catch (err) { res.status(500).json({ error: "Registration sequence errored." }); }
+  } catch (err) { 
+    console.error("🔥 SYSTEM REGISTRATION ERROR CRASH TRACE:", err);
+    return res.status(500).json({ error: "Registration sequence database error." }); 
+  }
 });
 
-app.post('/api/auth/login', passport.authenticate('local'), (req, res) => {
-  res.json({ success: true, user: { username: req.user.username } });
+// Custom passport router handler to prevent raw text responses on mismatch login criteria
+app.post('/api/auth/login', (req, res, next) => {
+  passport.authenticate('local', (err, user, info) => {
+    if (err) return res.status(500).json({ error: "Internal validation failure." });
+    if (!user) return res.status(401).json({ error: info?.message || "Invalid authentication details." });
+    
+    req.login(user, (loginErr) => {
+      if (loginErr) return res.status(500).json({ error: "Login allocation runtime error." });
+      return res.json({ success: true, user: { username: user.username } });
+    });
+  })(req, res, next);
 });
 
 app.post('/api/auth/logout', (req, res, next) => {
@@ -112,12 +121,13 @@ app.get('/api/auth/session', (req, res) => {
   if (req.isAuthenticated()) {
     res.json({ loggedIn: true, username: req.user.username });
   } else {
-    res.json({ loggedIn: false });
+    // Crucial: Respond 200 OK with loggedIn false so frontend skips string alerts
+    res.status(200).json({ loggedIn: false });
   }
 });
 
 // ==========================================================================
-// CORE SECURED PLATFORM INSTANCE ROUTES (Tied to req.user._id)
+// DATA ACQUISITION STORAGE ROUTES (NOW BOUND TO REQ.USER._ID)
 // ==========================================================================
 app.post('/api/parse-syllabus', ensureAuthenticated, upload.single('syllabus'), async (req, res) => {
   try {
@@ -129,15 +139,15 @@ app.post('/api/parse-syllabus', ensureAuthenticated, upload.single('syllabus'), 
     try {
       const pdfData = await pdfParse(req.file.buffer);
       rawText = pdfData.text;
-    } catch (e) { /* visual fallback trigger checking */ }
+    } catch (e) { /* visual fallback */ }
 
     if (!rawText || rawText.trim().length === 0) {
-      contentsPayload = [{ inlineData: { mimeType: "application/pdf", data: req.file.buffer.toString("base64") } }, "Extract curriculum information directly out of this raw document file asset and map the structured layout."];
+      contentsPayload = [{ inlineData: { mimeType: "application/pdf", data: req.file.buffer.toString("base64") } }, "Extract curriculum information from raw document assets and map structured week data layouts."];
     } else {
       contentsPayload = [`Syllabus text dataset to parse:\n${rawText}`];
     }
 
-    const systemInstructions = `You are an elite academic advisor. Break down this syllabus into a strict week-by-week study timeline. Factor in date: ${examDate} and hours: ${weeklyHours}. Respond ONLY with a valid JSON object matching the standard layout structure schema.`;
+    const systemInstructions = `You are an elite academic advisor. Break down this syllabus into a strict week-by-week study timeline. Respond ONLY with a valid JSON object matching the standard requested format structure layout.`;
     const jsonSchema = { type: "OBJECT", properties: { courseName: { type: "STRING" }, totalEstimatedWeeks: { type: "NUMBER" }, schedule: { type: "ARRAY", items: { type: "OBJECT", properties: { week: { type: "NUMBER" }, topicTitle: { type: "STRING" }, estimatedHours: { type: "NUMBER" }, subtopics: { type: "ARRAY", items: { type: "STRING" } } }, required: ["week", "topicTitle", "estimatedHours", "subtopics"] } } }, required: ["courseName", "totalEstimatedWeeks", "schedule"] };
 
     const aiResponse = await ai.models.generateContent({
@@ -148,7 +158,6 @@ app.post('/api/parse-syllabus', ensureAuthenticated, upload.single('syllabus'), 
 
     const structuredSchedule = JSON.parse(aiResponse.text);
 
-    // SECURE LOCAL REPOSITORY COMMIT: Automatically save the plan under the logged-in User's ID
     const newPlan = new StudyPlan({
         userId: req.user._id,
         examDate,
@@ -158,57 +167,43 @@ app.post('/api/parse-syllabus', ensureAuthenticated, upload.single('syllabus'), 
     await newPlan.save();
 
     res.json(structuredSchedule);
-  } catch (error) { 
-    console.error("Parsing Failure:", error);
-    res.status(500).json({ error: "Generation processing exception." }); 
-  }
+  } catch (error) { res.status(500).json({ error: "Syllabus parsing execution exception." }); }
 });
 
 app.get('/api/history', ensureAuthenticated, async (req, res) => {
   try {
-    // SECURITY WALL: Pull only the documents matching the active account ID
     const records = await StudyPlan.find({ userId: req.user._id }).sort({ _id: -1 });
     res.json(records);
-  } catch (error) { res.status(500).json({ error: "Failed to read database records." }); }
+  } catch (error) { res.status(500).json({ error: "Failed to read database logs." }); }
 });
 
 app.post('/api/generate-flashcards', ensureAuthenticated, async (req, res) => {
   try {
     const { notes } = req.body;
-    if (!notes || notes.trim().length < 15) return res.status(400).json({ error: "Notes content is too short." });
-
     const systemInstructions = `You are a strict active-recall assistant. Respond ONLY with a valid JSON array matching the requested schema.`;
     const jsonSchema = { type: "ARRAY", items: { type: "OBJECT", properties: { q: { type: "STRING" }, a: { type: "STRING" } }, required: ["q", "a"] } };
 
     const aiResponse = await ai.models.generateContent({
       model: "gemini-2.5-flash",
-      contents: `Generate custom flashcards based on these notes:\n${notes}`,
+      contents: `Generate cards based on notes:\n${notes}`,
       config: { systemInstruction: systemInstructions, responseMimeType: "application/json", responseSchema: jsonSchema }
     });
     res.json(JSON.parse(aiResponse.text));
-  } catch (e) { res.status(500).json({ error: "Flashcard processing error." }); }
+  } catch (e) { res.status(500).json({ error: "Cards processing error." }); }
 });
 
 app.post('/api/summarize-notes', ensureAuthenticated, async (req, res) => {
   try {
     const { notes } = req.body;
-    if (!notes || notes.trim().length < 10) return res.status(400).json({ error: "Provide notes to summarize." });
-
-    const systemInstructions = `You are an expert academic editor. Convert the notes into a clear plain-text layout. Do not use markdown characters like hashes or asterisks.`;
+    const systemInstructions = `You are an expert academic editor. Convert the user notes cleanly into a highly readable plain-text summary structure.`;
     const aiResponse = await ai.models.generateContent({
       model: "gemini-2.5-flash",
-      contents: `Summarize these notes:\n${notes}`,
+      contents: `Summarize notes:\n${notes}`,
       config: { systemInstruction: systemInstructions }
     });
     res.json({ summary: aiResponse.text || "Summary failed." });
-  } catch (e) { res.status(500).json({ error: "Summarization processing error." }); }
+  } catch (e) { res.status(500).json({ error: "Summarizer system exception." }); }
 });
 
-// ==========================================================================
-// LOCAL PORT LISTEN ENGAGEMENT
-// ==========================================================================
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log(`\n🚀 Secure Full-Stack Hub running on: http://localhost:${PORT}`);
-  console.log(`Open your browser to test your local implementation.\n`);
-});
+app.listen(PORT, () => console.log(`\n🚀 Secure Full-Stack Hub running on: http://localhost:${PORT}`));

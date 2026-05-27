@@ -46,7 +46,7 @@ forms.fileInput?.addEventListener('change', (e) => {
 });
 
 // ==========================================================================
-// CENTRAL AUTHENTICATION ENGINE
+// CENTRAL AUTHENTICATION ENGINE (ROUTING ISOLATED)
 // ==========================================================================
 async function verifyActiveSessionContext() {
     try {
@@ -72,16 +72,18 @@ async function verifyActiveSessionContext() {
     }
 }
 
-document.getElementById('authForm')?.addEventListener('submit', async (e) => {
-    e.preventDefault();
+// Global authentication handler to send precise JSON payloads to the database endpoints
+async function processAuthenticationRequest(endpointUrl) {
     const username = doc('authUsername').value.trim();
     const password = doc('authPassword').value;
-    const submitterId = e.submitter?.id; // Figures out exactly which button was clicked!
 
-    const targetUrl = submitterId === 'registerBtn' ? '/api/auth/register' : '/api/auth/login';
+    if (!username || !password) {
+        alert("Please fill out both username and password fields.");
+        return;
+    }
 
     try {
-        const response = await fetch(targetUrl, {
+        const response = await fetch(endpointUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ username, password })
@@ -90,12 +92,37 @@ document.getElementById('authForm')?.addEventListener('submit', async (e) => {
         const outcome = await response.json();
         if (!response.ok) throw new Error(outcome.error || 'Authentication credential mismatch.');
 
-        alert(submitterId === 'registerBtn' ? "Account created successfully!" : "Access Granted!");
-        verifyActiveSessionContext(); // Clear out overlay panel and refresh dashboard tracks!
+        alert(endpointUrl.includes('register') ? "Account created successfully!" : "Access Granted!");
+        verifyActiveSessionContext(); // Drops overlay and syncs database maps
 
     } catch (err) {
         alert(err.message);
     }
+}
+
+// Handler A: Explicitly intercept click execution on the SIGN IN action button
+doc('loginBtn')?.addEventListener('click', (e) => {
+    e.preventDefault();
+    if (doc('authForm').checkValidity()) {
+        processAuthenticationRequest('/api/auth/login');
+    } else {
+        doc('authForm').reportValidity();
+    }
+});
+
+// Handler B: Explicitly intercept click execution on the SIGN UP action button
+doc('registerBtn')?.addEventListener('click', (e) => {
+    e.preventDefault();
+    if (doc('authForm').checkValidity()) {
+        processAuthenticationRequest('/api/auth/register');
+    } else {
+        doc('authForm').reportValidity();
+    }
+});
+
+// Handler C: Completely stop standard form submissions from bubbling errors
+doc('authForm')?.addEventListener('submit', (e) => {
+    e.preventDefault();
 });
 
 // ==========================================================================
@@ -441,13 +468,3 @@ async function streamHistoricalDatabaseLogs() {
 
 // Fire the session verify check right when the page boots up
 document.addEventListener('DOMContentLoaded', verifyActiveSessionContext);
-
-// Google Button UI Effect
-const googleBtn = document.getElementById('googleLoginBtn');
-if (googleBtn) {
-    googleBtn.addEventListener('mouseenter', () => googleBtn.style.background = '#f8f9fa');
-    googleBtn.addEventListener('mouseleave', () => googleBtn.style.background = 'white');
-    googleBtn.addEventListener('click', () => {
-        alert("Google OAuth connection requires cloud client configuration parameters. Let's finish local database signups first!");
-    });
-}
