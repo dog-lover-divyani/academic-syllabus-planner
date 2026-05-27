@@ -46,6 +46,52 @@ forms.fileInput?.addEventListener('change', (e) => {
 });
 
 // ==========================================================================
+// CENTRAL AUTHENTICATION ENGINE
+// ==========================================================================
+async function verifyActiveSessionContext() {
+    try {
+        const response = await fetch('/api/auth/session');
+        const state = await response.json();
+        
+        if (state.loggedIn) {
+            document.getElementById('authOverlay')?.classList.add('hidden');
+            // Session validated successfully! Go ahead and stream their local database history records down
+            streamHistoricalDatabaseLogs();
+        } else {
+            document.getElementById('authOverlay')?.classList.remove('hidden');
+        }
+    } catch (err) {
+        console.error("Session connection check failed:", err);
+    }
+}
+
+document.getElementById('authForm')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const username = doc('authUsername').value.trim();
+    const password = doc('authPassword').value;
+    const submitterId = e.submitter?.id; // Figures out exactly which button was clicked!
+
+    const targetUrl = submitterId === 'registerBtn' ? '/api/auth/register' : '/api/auth/login';
+
+    try {
+        const response = await fetch(targetUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username, password })
+        });
+
+        const outcome = await response.json();
+        if (!response.ok) throw new Error(outcome.error || 'Authentication credential mismatch.');
+
+        alert(submitterId === 'registerBtn' ? "Account created successfully!" : "Access Granted!");
+        verifyActiveSessionContext(); // Clear out overlay panel and refresh dashboard tracks!
+
+    } catch (err) {
+        alert(err.message);
+    }
+});
+
+// ==========================================================================
 // FORM TRANSMISSION PAYLOAD REFINEMENT
 // ==========================================================================
 forms.setup?.addEventListener('submit', async (e) => {
@@ -81,7 +127,7 @@ forms.setup?.addEventListener('submit', async (e) => {
         switchActiveWeekWorkspace(0); 
         calculateOverallProgress();
         
-        // Refresh the sidebar history listing after saving the new plan
+        // Refresh history listings after saving a fresh document allocation
         setTimeout(streamHistoricalDatabaseLogs, 1000);
 
     } catch (error) {
@@ -198,9 +244,6 @@ function resetFlashcardUIComponents() {
     doc('flashcardContainer').classList.remove('flipped');
 }
 
-// ==========================================================================
-// DYNAMIC ACTIVE RECALL MODULE GENERATION PIPELINE
-// ==========================================================================
 doc('generateCardsBtn')?.addEventListener('click', async () => {
     const notesValue = doc('notesArea').value.trim();
     if (notesValue.length < 15) {
@@ -334,7 +377,7 @@ expandLink?.addEventListener('click', () => {
 });
 
 // ==========================================================================
-// DYNAMIC SERVER HISTORY STREAMING ARCHITECTURE (FULLY ALIGNED CONTEXT)
+// DYNAMIC SERVER HISTORY STREAMING ARCHITECTURE
 // ==========================================================================
 async function streamHistoricalDatabaseLogs() {
     const historyContainer = document.getElementById('historyPlanList');
@@ -368,17 +411,14 @@ async function streamHistoricalDatabaseLogs() {
             planItem.addEventListener('mouseenter', () => planItem.style.background = 'rgba(0,0,0,0.08)');
             planItem.addEventListener('mouseleave', () => planItem.style.background = 'rgba(0,0,0,0.04)');
 
-            // PERFECT ALIGNED UI HYDRATION ON CLICK
+            // PERFECT HYDRATION MOUNT ON CLICK
             planItem.addEventListener('click', () => {
-                // 1. Overwrite central script core state graph
                 currentPlanData = record.data;
                 selectedWeekIndex = 0; 
 
-                // 2. Clear holding viewport view states
                 views.empty.classList.add('hidden');
                 views.active.classList.remove('hidden');
 
-                // 3. Re-trigger rendering pipelines
                 renderTimelineNavigation(currentPlanData);
                 switchActiveWeekWorkspace(0); 
                 calculateOverallProgress();
@@ -392,5 +432,5 @@ async function streamHistoricalDatabaseLogs() {
     }
 }
 
-// Attach lifecycle boots
-document.addEventListener('DOMContentLoaded', streamHistoricalDatabaseLogs);
+// Fire the session verify check right when the page boots up
+document.addEventListener('DOMContentLoaded', verifyActiveSessionContext);
