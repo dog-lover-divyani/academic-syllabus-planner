@@ -625,3 +625,67 @@ body.theater-mode-active #notesArea {
     height: 100% !important;
     min-height: calc(100vh - 220px) !important;
 }
+
+/* ==========================================================================
+   SECURE ACCOUNT GATEWAY SYSTEM LOOKS
+   ========================================================================== */
+.auth-modal-screen {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(15, 15, 20, 0.82);
+    backdrop-filter: blur(12px); /* Premium frosted glass effect */
+    -webkit-backdrop-filter: blur(12px);
+    z-index: 99999; /* Forces it over absolutely everything else */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: opacity 0.4s ease, visibility 0.4s ease;
+}
+
+/* Hidden class to smoothly remove the screen when logged in */
+.auth-modal-screen.hidden {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+}
+
+.auth-card {
+    background: #ffffff;
+    padding: 35px;
+    width: 90%;
+    max-width: 400px;
+    border-radius: 16px;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+    color: #333333;
+}
+
+.btn-primary {
+    background-color: #6c5ce7; /* Elegant violet accent color */
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: background 0.2s;
+}
+
+.btn-primary:hover {
+    background-color: #5b4cc4;
+}
+
+.btn-secondary {
+    background-color: #f1f2f6;
+    color: #2f3542;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: background 0.2s;
+}
+
+.btn-secondary:hover {
+    background-color: #e4e7eb;
+}
