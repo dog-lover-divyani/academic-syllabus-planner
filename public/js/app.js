@@ -51,11 +51,14 @@ forms.fileInput?.addEventListener('change', (e) => {
 // ==========================================================================
 // CENTRAL AUTHENTICATION ENGINE (UPGRADED WITH PROD AUTO-HYDRATION)
 // ==========================================================================
+// ==========================================================================
+// CENTRAL AUTHENTICATION ENGINE (UPGRADED WITH DYNAMIC WORKSPACE RECONCILIATION)
+// ==========================================================================
 async function verifyActiveSessionContext() {
     try {
         const response = await fetch('/api/auth/session');
         
-        // SAFE CATCH: If the server returns a 401 or anything non-OK, it means user needs to log in
+        // SAFE CATCH: If the server returns a 401, show the login box
         if (!response.ok) {
             document.getElementById('authOverlay')?.classList.remove('hidden');
             return;
@@ -64,28 +67,34 @@ async function verifyActiveSessionContext() {
         const state = await response.json();
         
         if (state && state.loggedIn) {
-            // Drop the login box modal barrier completely out of the user's way!
+            // 1. Instantly hide the login overlay modal out of the way
             document.getElementById('authOverlay')?.classList.add('hidden');
             
-            // Sync up database history tabs in the sidebar panel
+            // 2. Sync and download your saved history cards into the sidebar 
             if (typeof streamHistoricalDatabaseLogs === 'function') {
                 await streamHistoricalDatabaseLogs();
             }
 
-            // DYNAMIC AUTO-HYDRATION ENTRY POINT:
-            // If the user already has saved plans, auto-load the most recent one so the screen isn't blank
-            const historyContainer = document.getElementById('historyPlanList');
-            const firstSavedPlanLink = historyContainer?.querySelector('.history-item-link');
-            
-            if (firstSavedPlanLink) {
-                console.log("Found an existing schedule configuration. Triggering auto-load sequence...");
-                firstSavedPlanLink.click(); // Programmatically clicks the first history item to populate views
+            // 3. UI STATE CHECK: Decide what the user should look at
+            if (currentPlanData) {
+                // If a plan is already loaded in memory, render it
+                views.empty.classList.add('hidden');
+                views.active.classList.remove('hidden');
             } else {
-                // If it's a brand new account, make sure they see the clean upload welcome message
-                views.empty.classList.remove('hidden');
-                views.active.classList.add('hidden');
-            }
+                // Check if any old plans exist in the freshly downloaded history menu
+                const historyContainer = document.getElementById('historyPlanList');
+                const firstPlan = historyContainer?.querySelector('.history-item-link');
 
+                if (firstPlan) {
+                    // If they have history records, auto-click the first one to populate the screen!
+                    console.log("Existing schedule data found. Bootstrapping workspace view...");
+                    firstPlan.click();
+                } else {
+                    // If it's a completely blank profile account, show them the "Upload Syllabus" welcome panel
+                    views.empty.classList.remove('hidden');
+                    views.active.classList.add('hidden');
+                }
+            }
         } else {
             document.getElementById('authOverlay')?.classList.remove('hidden');
         }
