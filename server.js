@@ -17,14 +17,13 @@ const app = express();
 // ==========================================================================
 // SERVERLESS-OPTIMIZED DATABASE CONNECTIVITY ARCHITECTURE
 // ==========================================================================
-// Prevents serverless environments from choking on multiple connection cycles
 let isConnected = false;
 const connectDatabase = async () => {
   if (isConnected) return;
   
   try {
     const db = await mongoose.connect(process.env.MONGODB_URI, {
-      serverSelectionTimeoutMS: 5000 // Cut stale queries short if connection slips
+      serverSelectionTimeoutMS: 5000 
     });
     isConnected = db.connections[0].readyState === 1;
     console.log('🍃 Connected cleanly to live cloud MongoDB database instance.');
@@ -33,7 +32,6 @@ const connectDatabase = async () => {
   }
 };
 
-// Global route interception middleware to ensure DB is hot before processing payloads
 app.use(async (req, res, next) => {
   await connectDatabase();
   next();
@@ -52,9 +50,9 @@ app.use(session({
   resave: false,
   saveUninitialized: false,
   cookie: { 
-    secure: process.env.NODE_ENV === 'production', // Use secure cookies if running live HTTPS
+    secure: process.env.NODE_ENV === 'production', 
     sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
-    maxAge: 24 * 60 * 60 * 1000 // Session duration: 24h
+    maxAge: 24 * 60 * 60 * 1000 
   }
 }));
 
@@ -79,13 +77,11 @@ passport.deserializeUser(async (id, done) => {
   catch (err) { done(err); }
 });
 
-// AUTH SHIELD MIDDLEWARE: Prevents unauthenticated users from using core AI routes
 const ensureAuthenticated = (req, res, next) => {
   if (req.isAuthenticated()) return next();
   res.status(401).json({ loggedIn: false, error: "Unauthorized access path." });
 };
 
-// Configure File Upload Processing
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
 const ai = new GoogleGenAI({ apiKey: process.env.EDUTRACK_API_KEY });
 
@@ -113,8 +109,8 @@ app.post('/api/auth/register', async (req, res) => {
       return res.json({ success: true, user: { username: newUser.username } });
     });
   } catch (err) { 
-    console.error("🔥 SYSTEM REGISTRATION ERROR CRASH TRACE:", err);
-    return res.status(500).json({ error: "Registration sequence database error." }); 
+    console.error("🔥 SYSTEM REGISTRATION ERROR:", err);
+    return res.status(500).json({ error: err.message || "Registration sequence database error." }); 
   }
 });
 
@@ -224,11 +220,9 @@ app.post('/api/summarize-notes', ensureAuthenticated, async (req, res) => {
   } catch (e) { res.status(500).json({ error: "Summarizer system exception." }); }
 });
 
-// CRUCIAL: Local listener block stays intact for development testing runs
 if (process.env.NODE_ENV !== 'production') {
   const PORT = process.env.PORT || 3000;
   app.listen(PORT, () => console.log(`\n🚀 Secure Full-Stack Hub running locally on: http://localhost:${PORT}`));
 }
 
-// CRUCIAL EXPORT: Allows Vercel to intercept incoming routing objects serverlessly
 module.exports = app;

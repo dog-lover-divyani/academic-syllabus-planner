@@ -46,19 +46,12 @@ forms.fileInput?.addEventListener('change', (e) => {
 });
 
 // ==========================================================================
-// CENTRAL AUTHENTICATION ENGINE (ROUTING ISOLATED)
-// ==========================================================================
-// ==========================================================================
-// CENTRAL AUTHENTICATION ENGINE (UPGRADED WITH PROD AUTO-HYDRATION)
-// ==========================================================================
-// ==========================================================================
-// CENTRAL AUTHENTICATION ENGINE (UPGRADED WITH DYNAMIC WORKSPACE RECONCILIATION)
+// CENTRAL AUTHENTICATION ENGINE (ROUTING ISOLATED & REDIRECT FIXED)
 // ==========================================================================
 async function verifyActiveSessionContext() {
     try {
         const response = await fetch('/api/auth/session');
         
-        // SAFE CATCH: If the server returns a 401, show the login box
         if (!response.ok) {
             document.getElementById('authOverlay')?.classList.remove('hidden');
             return;
@@ -67,30 +60,24 @@ async function verifyActiveSessionContext() {
         const state = await response.json();
         
         if (state && state.loggedIn) {
-            // 1. Instantly hide the login overlay modal out of the way
+            // 1. Clear modal visibility barrier out of the way
             document.getElementById('authOverlay')?.classList.add('hidden');
             
-            // 2. Sync and download your saved history cards into the sidebar 
-            if (typeof streamHistoricalDatabaseLogs === 'function') {
-                await streamHistoricalDatabaseLogs();
-            }
+            // 2. Fetch log data from backend
+            await streamHistoricalDatabaseLogs();
 
-            // 3. UI STATE CHECK: Decide what the user should look at
+            // 3. Mount interface states programmatically
             if (currentPlanData) {
-                // If a plan is already loaded in memory, render it
                 views.empty.classList.add('hidden');
                 views.active.classList.remove('hidden');
             } else {
-                // Check if any old plans exist in the freshly downloaded history menu
                 const historyContainer = document.getElementById('historyPlanList');
                 const firstPlan = historyContainer?.querySelector('.history-item-link');
 
                 if (firstPlan) {
-                    // If they have history records, auto-click the first one to populate the screen!
-                    console.log("Existing schedule data found. Bootstrapping workspace view...");
+                    console.log("Bootstrap pipeline running: Hydrating dashboard with recent profiles...");
                     firstPlan.click();
                 } else {
-                    // If it's a completely blank profile account, show them the "Upload Syllabus" welcome panel
                     views.empty.classList.remove('hidden');
                     views.active.classList.add('hidden');
                 }
@@ -104,7 +91,6 @@ async function verifyActiveSessionContext() {
     }
 }
 
-// Global authentication handler to send precise JSON payloads to the database endpoints
 async function processAuthenticationRequest(endpointUrl) {
     const username = doc('authUsername').value.trim();
     const password = doc('authPassword').value;
@@ -125,14 +111,15 @@ async function processAuthenticationRequest(endpointUrl) {
         if (!response.ok) throw new Error(outcome.error || 'Authentication credential mismatch.');
 
         alert(endpointUrl.includes('register') ? "Account created successfully!" : "Access Granted!");
-        verifyActiveSessionContext(); // Drops overlay and syncs database maps
+        
+        // Execute workspace setup cleanly
+        await verifyActiveSessionContext(); 
 
     } catch (err) {
-        alert(err.message);
+        alert("Authentication Error: " + err.message);
     }
 }
 
-// Handler A: Explicitly intercept click execution on the SIGN IN action button
 doc('loginBtn')?.addEventListener('click', (e) => {
     e.preventDefault();
     if (doc('authForm').checkValidity()) {
@@ -142,7 +129,6 @@ doc('loginBtn')?.addEventListener('click', (e) => {
     }
 });
 
-// Handler B: Explicitly intercept click execution on the SIGN UP action button
 doc('registerBtn')?.addEventListener('click', (e) => {
     e.preventDefault();
     if (doc('authForm').checkValidity()) {
@@ -152,7 +138,6 @@ doc('registerBtn')?.addEventListener('click', (e) => {
     }
 });
 
-// Handler C: Completely stop standard form submissions from bubbling errors
 doc('authForm')?.addEventListener('submit', (e) => {
     e.preventDefault();
 });
@@ -173,7 +158,7 @@ doc('logoutBtn')?.addEventListener('click', async () => {
 
         if (response.ok && outcome.success) {
             alert("Session gracefully closed.");
-            window.location.reload(); // Drops overlay screen back down completely clean
+            window.location.reload(); 
         } else {
             throw new Error("Termination request unallocated.");
         }
@@ -218,7 +203,6 @@ forms.setup?.addEventListener('submit', async (e) => {
         switchActiveWeekWorkspace(0); 
         calculateOverallProgress();
         
-        // Refresh history listings after saving a fresh document allocation
         setTimeout(streamHistoricalDatabaseLogs, 1000);
 
     } catch (error) {
@@ -468,7 +452,7 @@ expandLink?.addEventListener('click', () => {
 });
 
 // ==========================================================================
-// DYNAMIC SERVER HISTORY STREAMING ARCHITECTURE
+// DYNAMIC SERVER HISTORY STREAMING ARCHITECTURE (DATETIME STAMP BUG PATCHED)
 // ==========================================================================
 async function streamHistoricalDatabaseLogs() {
     const historyContainer = document.getElementById('historyPlanList');
@@ -490,19 +474,21 @@ async function streamHistoricalDatabaseLogs() {
         databaseRecords.forEach(record => {
             if (!record.data) return;
 
+            // BUG PATCH: Mongoose models use 'createdAt' by default instead of a nonexistent string 'timestamp'
+            const displayDate = record.createdAt ? new Date(record.createdAt).toLocaleDateString() : 'Recent Plan';
+
             const planItem = document.createElement('li');
             planItem.className = 'history-item-link';
             planItem.style.cssText = 'padding: 8px 12px; border-radius: 6px; background: rgba(0,0,0,0.04); font-size: 12px; cursor: pointer; display: flex; flex-direction: column; transition: all 0.2s; margin-bottom: 4px; list-style: none;';
             
             planItem.innerHTML = `
                 <strong style="color: var(--accent);">${record.data.courseName || 'Unparsed Course Plan'}</strong>
-                <span style="font-size: 10px; opacity: 0.7; margin-top: 2px;"><i class="fa-solid fa-calendar"></i> ${record.timestamp} — Weeks: ${record.data.totalEstimatedWeeks || '--'}</span>
+                <span style="font-size: 10px; opacity: 0.7; margin-top: 2px;"><i class="fa-solid fa-calendar"></i> ${displayDate} — Weeks: ${record.data.totalEstimatedWeeks || '--'}</span>
             `;
 
             planItem.addEventListener('mouseenter', () => planItem.style.background = 'rgba(0,0,0,0.08)');
             planItem.addEventListener('mouseleave', () => planItem.style.background = 'rgba(0,0,0,0.04)');
 
-            // PERFECT HYDRATION MOUNT ON CLICK
             planItem.addEventListener('click', () => {
                 currentPlanData = record.data;
                 selectedWeekIndex = 0; 
@@ -523,5 +509,4 @@ async function streamHistoricalDatabaseLogs() {
     }
 }
 
-// Fire the session verify check right when the page boots up
 document.addEventListener('DOMContentLoaded', verifyActiveSessionContext);
