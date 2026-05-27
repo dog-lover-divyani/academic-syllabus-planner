@@ -48,6 +48,9 @@ forms.fileInput?.addEventListener('change', (e) => {
 // ==========================================================================
 // CENTRAL AUTHENTICATION ENGINE (ROUTING ISOLATED)
 // ==========================================================================
+// ==========================================================================
+// CENTRAL AUTHENTICATION ENGINE (UPGRADED WITH PROD AUTO-HYDRATION)
+// ==========================================================================
 async function verifyActiveSessionContext() {
     try {
         const response = await fetch('/api/auth/session');
@@ -61,8 +64,28 @@ async function verifyActiveSessionContext() {
         const state = await response.json();
         
         if (state && state.loggedIn) {
+            // Drop the login box modal barrier completely out of the user's way!
             document.getElementById('authOverlay')?.classList.add('hidden');
-            if (typeof streamHistoricalDatabaseLogs === 'function') streamHistoricalDatabaseLogs();
+            
+            // Sync up database history tabs in the sidebar panel
+            if (typeof streamHistoricalDatabaseLogs === 'function') {
+                await streamHistoricalDatabaseLogs();
+            }
+
+            // DYNAMIC AUTO-HYDRATION ENTRY POINT:
+            // If the user already has saved plans, auto-load the most recent one so the screen isn't blank
+            const historyContainer = document.getElementById('historyPlanList');
+            const firstSavedPlanLink = historyContainer?.querySelector('.history-item-link');
+            
+            if (firstSavedPlanLink) {
+                console.log("Found an existing schedule configuration. Triggering auto-load sequence...");
+                firstSavedPlanLink.click(); // Programmatically clicks the first history item to populate views
+            } else {
+                // If it's a brand new account, make sure they see the clean upload welcome message
+                views.empty.classList.remove('hidden');
+                views.active.classList.add('hidden');
+            }
+
         } else {
             document.getElementById('authOverlay')?.classList.remove('hidden');
         }
