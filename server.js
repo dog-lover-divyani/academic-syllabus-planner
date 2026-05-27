@@ -15,26 +15,45 @@ const { User, StudyPlan } = require('./models');
 const app = express();
 
 // ==========================================================================
-// LOCAL DATABASE CONNECTIVITY ENGINE
+// SERVERLESS-OPTIMIZED DATABASE CONNECTIVITY ARCHITECTURE
 // ==========================================================================
-mongoose.connect(process.env.MONGODB_URI)
-  .then(() => console.log('🍃 Connected cleanly to local MongoDB database instance.'))
-  .catch(err => console.error('❌ MongoDB local connection failure:', err));
+// Prevents serverless environments from choking on multiple connection cycles
+let isConnected = false;
+const connectDatabase = async () => {
+  if (isConnected) return;
+  
+  try {
+    const db = await mongoose.connect(process.env.MONGODB_URI, {
+      serverSelectionTimeoutMS: 5000 // Cut stale queries short if connection slips
+    });
+    isConnected = db.connections[0].readyState === 1;
+    console.log('🍃 Connected cleanly to live cloud MongoDB database instance.');
+  } catch (err) {
+    console.error('❌ MongoDB cloud connection failure:', err);
+  }
+};
 
-// Middleware configuration
+// Global route interception middleware to ensure DB is hot before processing payloads
+app.use(async (req, res, next) => {
+  await connectDatabase();
+  next();
+});
+
+// Standard core middleware configuration
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
 
 // ==========================================================================
-// PASSPORT SINGLE INITIALIZATION BLOCK (FIXED & TRACKING COHESIVELY)
+// PASSPORT SINGLE INITIALIZATION BLOCK
 // ==========================================================================
 app.use(session({
   secret: process.env.SESSION_SECRET || 'fallback_secret_key',
   resave: false,
   saveUninitialized: false,
   cookie: { 
-    secure: false, // Set to true only if running HTTPS production proxies
+    secure: process.env.NODE_ENV === 'production', // Use secure cookies if running live HTTPS
+    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
     maxAge: 24 * 60 * 60 * 1000 // Session duration: 24h
   }
 }));
@@ -63,7 +82,6 @@ passport.deserializeUser(async (id, done) => {
 // AUTH SHIELD MIDDLEWARE: Prevents unauthenticated users from using core AI routes
 const ensureAuthenticated = (req, res, next) => {
   if (req.isAuthenticated()) return next();
-  // Safe JSON error response prevents frontend crash strings!
   res.status(401).json({ loggedIn: false, error: "Unauthorized access path." });
 };
 
@@ -100,7 +118,6 @@ app.post('/api/auth/register', async (req, res) => {
   }
 });
 
-// Custom passport router handler to prevent raw text responses on mismatch login criteria
 app.post('/api/auth/login', (req, res, next) => {
   passport.authenticate('local', (err, user, info) => {
     if (err) return res.status(500).json({ error: "Internal validation failure." });
@@ -124,13 +141,12 @@ app.get('/api/auth/session', (req, res) => {
   if (req.isAuthenticated()) {
     res.json({ loggedIn: true, username: req.user.username });
   } else {
-    // Crucial: Respond 200 OK with loggedIn false so frontend skips string alerts
     res.status(200).json({ loggedIn: false });
   }
 });
 
 // ==========================================================================
-// DATA ACQUISITION STORAGE ROUTES (NOW BOUND TO REQ.USER._ID)
+// DATA ACQUISITION STORAGE ROUTES
 // ==========================================================================
 app.post('/api/parse-syllabus', ensureAuthenticated, upload.single('syllabus'), async (req, res) => {
   try {
@@ -208,5 +224,11 @@ app.post('/api/summarize-notes', ensureAuthenticated, async (req, res) => {
   } catch (e) { res.status(500).json({ error: "Summarizer system exception." }); }
 });
 
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`\n🚀 Secure Full-Stack Hub running on: http://localhost:${PORT}`));
+// CRUCIAL: Local listener block stays intact for development testing runs
+if (process.env.NODE_ENV !== 'production') {
+  const PORT = process.env.PORT || 3000;
+  app.listen(PORT, () => console.log(`\n🚀 Secure Full-Stack Hub running locally on: http://localhost:${PORT}`));
+}
+
+// CRUCIAL EXPORT: Allows Vercel to intercept incoming routing objects serverlessly
+module.exports = app;
