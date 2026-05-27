@@ -126,6 +126,31 @@ doc('authForm')?.addEventListener('submit', (e) => {
 });
 
 // ==========================================================================
+// SESSION SECURITY TERMINATION HANDLER (LOGOUT)
+// ==========================================================================
+doc('logoutBtn')?.addEventListener('click', async () => {
+    if (!confirm("Are you sure you want to log out of your profile track?")) return;
+
+    try {
+        const response = await fetch('/api/auth/logout', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+        });
+
+        const outcome = await response.json();
+
+        if (response.ok && outcome.success) {
+            alert("Session gracefully closed.");
+            window.location.reload(); // Drops overlay screen back down completely clean
+        } else {
+            throw new Error("Termination request unallocated.");
+        }
+    } catch (err) {
+        alert("Logout synchronization failure.");
+    }
+});
+
+// ==========================================================================
 // FORM TRANSMISSION PAYLOAD REFINEMENT
 // ==========================================================================
 forms.setup?.addEventListener('submit', async (e) => {

@@ -227,8 +227,10 @@ body {
     margin: 24px 0;
 }
 
-/* BUTTON CONTROLS SECTOR GRAPH RULES */
-.btn-primary, .btn-secondary {
+/* ==========================================================================
+   MAIN DASHBOARD WORKSPACE NAVIGATION CONTROL BUTTONS
+   ========================================================================== */
+.btn-primary:not(#loginBtn), .btn-secondary:not(#registerBtn) {
     width: 100%;
     border-radius: 6px;
     font-weight: 600;
@@ -243,28 +245,27 @@ body {
     transition: var(--transition);
 }
 
-.btn-primary {
+.btn-primary:not(#loginBtn) {
     background-color: var(--accent);
     color: #000;
 }
 
-/* Handle text color changes for buttons dynamically on dark gradient and dark themes */
-body[data-theme="light-gradient"] .btn-primary,
-body[data-theme="cyber-dark"] .btn-primary {
+body[data-theme="light-gradient"] .btn-primary:not(#loginBtn),
+body[data-theme="cyber-dark"] .btn-primary:not(#loginBtn) {
     color: #fff;
 }
 
-.btn-primary:hover {
+.btn-primary:not(#loginBtn):hover {
     opacity: 0.9;
 }
 
-.btn-secondary {
+.btn-secondary:not(#registerBtn) {
     background-color: transparent;
     border: 1px solid var(--border-color);
     color: var(--text-main);
 }
 
-.btn-secondary:hover {
+.btn-secondary:not(#registerBtn):hover {
     background-color: rgba(255, 255, 255, 0.05);
 }
 
@@ -368,7 +369,6 @@ body[data-theme="cyber-dark"] .btn-primary {
     gap: 24px;
 }
 
-/* Adding a subtle glass backdrop filter for the translucent theme layout */
 .card {
     background-color: var(--bg-secondary);
     backdrop-filter: blur(8px);
@@ -596,38 +596,33 @@ body[data-theme="cyber-dark"] .btn-primary {
 /* ==========================================================================
    THEATER MODE FLUID SCREEN OVERLAY ENGAGEMENTS
    ========================================================================== */
-/* When theater mode is active, hide the structural sidebar layout entirely */
 body.theater-mode-active .sidebar {
     display: none !important;
 }
 
-/* Force the main container grid layout to collapse into a single broad column */
 body.theater-mode-active .app-container {
     grid-template-columns: 1fr !important;
 }
 
-/* Hide the topics card to give the notes card complete screen domination */
 body.theater-mode-active .topics-card,
 body.theater-mode-active .flashcards-full-width,
 body.theater-mode-active .main-header {
     display: none !important;
 }
 
-/* Stretch the notes card to occupy the complete viewport dimension area gracefully */
 body.theater-mode-active .notes-card {
     grid-column: 1 / -1 !important;
     height: calc(100vh - 80px) !important;
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* Make the textarea fill up the newly gained vertical space */
 body.theater-mode-active #notesArea {
     height: 100% !important;
     min-height: calc(100vh - 220px) !important;
 }
 
 /* ==========================================================================
-   SECURE ACCOUNT GATEWAY SYSTEM LOOKS
+   SECURE ACCOUNT GATEWAY SYSTEM LOOKS (INTERACTIVE UNIFORM BLUE BUTTONS)
    ========================================================================== */
 .auth-modal-screen {
     position: fixed;
@@ -645,7 +640,6 @@ body.theater-mode-active #notesArea {
     transition: opacity 0.4s ease, visibility 0.4s ease;
 }
 
-/* Hidden class to smoothly remove the screen when logged in */
 .auth-modal-screen.hidden {
     opacity: 0;
     visibility: hidden;
@@ -662,30 +656,25 @@ body.theater-mode-active #notesArea {
     color: #333333;
 }
 
-.btn-primary {
+/* BOTH BUTTONS: Configured to start with the precise matching violet-blue fill */
+#loginBtn, #registerBtn {
     background-color: #6c5ce7; /* Elegant violet accent color */
-    color: white;
+    color: #ffffff !important;
     border: none;
     border-radius: 6px;
     cursor: pointer;
     font-weight: 600;
-    transition: background 0.2s;
+    font-size: 14px;
+    padding: 10px;
+    width: 100%;
+    transition: background-color 0.25s ease, transform 0.1s ease;
 }
 
-.btn-primary:hover {
-    background-color: #5b4cc4;
+/* HOVER EFFECT: Shift shades seamlessly only when active under your cursor pointer */
+#loginBtn:hover, #registerBtn:hover {
+    background-color: #5b4cc4; /* Smooth contrast shift layout */
 }
 
-.btn-secondary {
-    background-color: #f1f2f6;
-    color: #2f3542;
-    border: 1px solid rgba(0, 0, 0, 0.1);
-    border-radius: 6px;
-    cursor: pointer;
-    font-weight: 600;
-    transition: background 0.2s;
-}
-
-.btn-secondary:hover {
-    background-color: #e4e7eb;
+#loginBtn:active, #registerBtn:active {
+    transform: scale(0.98); /* Micro-responsive touch click feel */
 }
