@@ -27,13 +27,16 @@ app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
 
 // ==========================================================================
-// PASSPORT SINGLE INITIALIZATION BLOCK (CLEANED & UNIFIED)
+// PASSPORT SINGLE INITIALIZATION BLOCK (FIXED & TRACKING COHESIVELY)
 // ==========================================================================
 app.use(session({
   secret: process.env.SESSION_SECRET || 'fallback_secret_key',
   resave: false,
   saveUninitialized: false,
-  cookie: { maxAge: 24 * 60 * 60 * 1000 } // Session duration: 24h
+  cookie: { 
+    secure: false, // Set to true only if running HTTPS production proxies
+    maxAge: 24 * 60 * 60 * 1000 // Session duration: 24h
+  }
 }));
 
 app.use(passport.initialize());
