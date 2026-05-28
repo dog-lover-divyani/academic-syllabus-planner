@@ -5,14 +5,13 @@ const { GoogleGenAI } = require('@google/genai');
 const path = require('path');
 const mongoose = require('mongoose');
 const session = require('express-session');
+const MongoStore = require('connect-mongo'); // Moved cleanly up with standard dependencies
 const passport = require('passport');
 const LocalStrategy = require('passport-local').Strategy;
-const MongoStore = require('connect-mongo');
 require('dotenv').config();
 
-// Destructure model dependencies explicitly
+// Load models AFTER core dependencies are compiled
 const { User, StudyPlan } = require('./models');
-
 const app = express();
 
 // ==========================================================================
