@@ -43,19 +43,18 @@ app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
 
 // ==========================================================================
-// PASSPORT SINGLE INITIALIZATION BLOCK
-// ==========================================================================
-// ==========================================================================
-// PASSPORT SINGLE INITIALIZATION BLOCK (PRODUCTION ROOTED VIA ATLAS MONGOSTORE)
+// PASSPORT SINGLE INITIALIZATION BLOCK (VERSION-AGNOSTIC PERSISTENCE)
 // ==========================================================================
 app.use(session({
   secret: process.env.SESSION_SECRET || 'fallback_secret_key',
   resave: false,
   saveUninitialized: false,
-  store: MongoStore.create({
+  store: MongoStore.create ? MongoStore.create({
     mongoUrl: process.env.MONGODB_URI,
-    ttl: 24 * 60 * 60, // Automatically clear stale session documents after 24 hours
-    autoRemove: 'native'
+    ttl: 24 * 60 * 60
+  }) : new MongoStore({
+    mongooseConnection: mongoose.connection,
+    ttl: 24 * 60 * 60
   }),
   cookie: { 
     secure: process.env.NODE_ENV === 'production', 
