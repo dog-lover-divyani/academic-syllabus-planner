@@ -58,7 +58,10 @@ const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 
 // ==========================================================================
 // GOOGLE GEMINI SDK V2 INITIALIZATION ENGINE
 // ==========================================================================
-const activeApiKey = process.env.EDUTRACK_API_KEY || process.env.GEMINI_API_KEY;
+// ==========================================================================
+// GOOGLE GEMINI SDK V2 INITIALIZATION ENGINE
+// ==========================================================================
+const activeApiKey = process.env.EDUTRACK_API_KEY;
 const ai = new GoogleGenAI({ apiKey: activeApiKey });
 
 // ==========================================================================
