@@ -5,7 +5,7 @@ const { GoogleGenAI } = require('@google/genai');
 const path = require('path');
 const mongoose = require('mongoose');
 const session = require('express-session');
-const MongoStore = require('connect-mongo')(session); // Moved cleanly up with standard dependencies
+const cookieSession = require('cookie-session'); // Moved cleanly up with standard dependencies
 const passport = require('passport');
 const LocalStrategy = require('passport-local').Strategy;
 require('dotenv').config();
@@ -46,22 +46,18 @@ app.use(express.static(path.join(__dirname, 'public')));
 // PASSPORT SINGLE INITIALIZATION BLOCK (VERSION-AGNOSTIC PERSISTENCE)
 // ==========================================================================
 // ==========================================================================
-// PASSPORT SINGLE INITIALIZATION BLOCK (LEGACY COMPATIBILITY MODE)
+// PASSPORT SINGLE INITIALIZATION BLOCK (SERVERLESS PERFECT COOKIE ENGINE)
 // ==========================================================================
-app.use(session({
-  secret: process.env.SESSION_SECRET || 'fallback_secret_key',
-  resave: false,
-  saveUninitialized: false,
-  store: new MongoStore({
-    mongooseConnection: mongoose.connection,
-    ttl: 24 * 60 * 60
-  }),
-  cookie: { 
-    secure: process.env.NODE_ENV === 'production', 
-    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
-    maxAge: 24 * 60 * 60 * 1000 
-  }
+app.use(cookieSession({
+  name: 'session',
+  keys: [process.env.SESSION_SECRET || 'fallback_secret_key'],
+  maxAge: 24 * 60 * 60 * 1000, // Session duration: 24h
+  secure: process.env.NODE_ENV === 'production',
+  sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax'
 }));
+
+app.use(passport.initialize());
+app.use(passport.session());
 
 app.use(passport.initialize());
 app.use(passport.session());
