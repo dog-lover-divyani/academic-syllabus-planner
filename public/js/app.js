@@ -110,16 +110,28 @@ async function processAuthenticationRequest(endpointUrl) {
         const outcome = await response.json();
         if (!response.ok) throw new Error(outcome.error || 'Authentication credential mismatch.');
 
+        // 1. Force drop the visual login barrier IMMEDIATELY on the spot
+        console.log("Authentication successful! Forcing login wall to drop...");
+        const overlay = document.getElementById('authOverlay');
+        if (overlay) {
+            overlay.classList.add('hidden');
+            overlay.style.display = 'none'; // Hard backup style override
+        }
+
+        // 2. Set default blank states so the workspace elements can safely render
+        views.empty.classList.remove('hidden');
+        views.active.classList.add('hidden');
+
+        // 3. Show the success notification box
         alert(endpointUrl.includes('register') ? "Account created successfully!" : "Access Granted!");
         
-        // Clear login wall instantly
-        await verifyActiveSessionContext(); 
+        // 4. Run the background syncing quietly after the UI is already open
+        verifyActiveSessionContext(); 
 
     } catch (err) {
-        alert(err.message);
+        alert("Authentication Error: " + err.message);
     }
 }
-
 doc('loginBtn')?.addEventListener('click', (e) => {
     e.preventDefault();
     if (doc('authForm').checkValidity()) {
