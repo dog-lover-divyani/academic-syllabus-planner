@@ -51,18 +51,30 @@ app.use(express.static(path.join(__dirname, 'public')));
 // PASSPORT SINGLE INITIALIZATION BLOCK (SERVERLESS COOKIE STORAGE)
 // ==========================================================================
 // 1. Core Cookie Session Middleware (FIRST)
+// ==========================================================================
+// PASSPORT SINGLE INITIALIZATION BLOCK (SERVERLESS COOKIE STORAGE)
+// ==========================================================================
 app.use(cookieSession({
   name: 'session',
   keys: [process.env.SESSION_SECRET || 'fallback_secret_key'],
-  maxAge: 24 * 60 * 60 * 1000,
+  maxAge: 24 * 60 * 60 * 1000, // Session duration: 24h
   secure: process.env.NODE_ENV === 'production', 
   sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax'
 }));
 
-// 2. Passport Strategies initialization (SECOND)
+// 🌟 COOKIE-SESSION PASSPORT COMPATIBILITY PATCH 🌟
+app.use((req, res, next) => {
+  if (req.session && !req.session.regenerate) {
+    req.session.regenerate = (cb) => { cb(); };
+  }
+  if (req.session && !req.session.save) {
+    req.session.save = (cb) => { cb(); };
+  }
+  next();
+});
+
 app.use(passport.initialize());
 app.use(passport.session());
-
 passport.use(new LocalStrategy(async (username, password, done) => {
   try {
     const user = await User.findOne({ username: username.toLowerCase().trim() });
