@@ -1,7 +1,7 @@
 const express = require('express');
 const multer = require('multer');
 const pdfParse = require('pdf-parse');
-const { GoogleGenAI } = require('@google/genai'); 
+const { GoogleGenAI } = require('@google/genai') || require('@google/generative-ai');
 const path = require('path');
 const mongoose = require('mongoose');
 const cookieSession = require('cookie-session');
@@ -58,7 +58,9 @@ const ensureAuthenticated = (req, res, next) => {
 
 // Configure File Upload Processing
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
-const ai = new GoogleGenAI({ apiKey: process.env.EDUTRACK_API_KEY });
+// Backup key allocation in case a typo occurred during deployment configuration
+const activeApiKey = process.env.EDUTRACK_API_KEY || process.env.GEMINI_API_KEY;
+const ai = new GoogleGenAI({ apiKey: activeApiKey });
 
 // ==========================================================================
 // USER VALIDATION & SIGNUP ROUTES (CUSTOM DRIVEN)
