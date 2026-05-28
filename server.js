@@ -5,8 +5,6 @@ const { GoogleGenAI } = require('@google/genai');
 const path = require('path');
 const mongoose = require('mongoose');
 const cookieSession = require('cookie-session');
-const passport = require('passport');
-const LocalStrategy = require('passport-local').Strategy;
 require('dotenv').config();
 
 // Destructure model dependencies explicitly
@@ -17,19 +15,13 @@ const app = express();
 // ==========================================================================
 // SERVERLESS-OPTIMIZED DATABASE CONNECTIVITY ARCHITECTURE
 // ==========================================================================
-let isConnected = false;
-// ==========================================================================
-// ROBUST SERVERLESS DATABASE CONNECTIVITY ENGINE
-// ==========================================================================
 const connectDatabase = async () => {
-  // Check if mongoose already has an active or connecting lifecycle track
   if (mongoose.connection.readyState === 1) return;
   if (mongoose.connection.readyState === 2) return;
   
   try {
-    console.log('⏳ Initiating database connection handshake...');
     await mongoose.connect(process.env.MONGODB_URI, {
-      serverSelectionTimeoutMS: 5000 // Give up quickly if the path is broken
+      serverSelectionTimeoutMS: 5000 
     });
     console.log('🍃 Connected cleanly to live cloud MongoDB database instance.');
   } catch (err) {
@@ -48,11 +40,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
 
 // ==========================================================================
-// PASSPORT SINGLE INITIALIZATION BLOCK (SERVERLESS COOKIE STORAGE)
-// ==========================================================================
-// 1. Core Cookie Session Middleware (FIRST)
-// ==========================================================================
-// PASSPORT SINGLE INITIALIZATION BLOCK (SERVERLESS COOKIE STORAGE)
+// SERVERLESS COOKIE SESSION INITIALIZATION BLOCK
 // ==========================================================================
 app.use(cookieSession({
   name: 'session',
@@ -62,47 +50,9 @@ app.use(cookieSession({
   sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax'
 }));
 
-// 🌟 COOKIE-SESSION PASSPORT COMPATIBILITY PATCH 🌟
-app.use((req, res, next) => {
-  if (req.session && !req.session.regenerate) {
-    req.session.regenerate = (cb) => { cb(); };
-  }
-  if (req.session && !req.session.save) {
-    req.session.save = (cb) => { cb(); };
-  }
-  next();
-});
-
-app.use(passport.initialize());
-app.use(passport.session());
-passport.use(new LocalStrategy(async (username, password, done) => {
-  try {
-    const user = await User.findOne({ username: username.toLowerCase().trim() });
-    if (!user) return done(null, false, { message: 'Incorrect username.' });
-    
-    const isMatch = await user.comparePassword(password);
-    if (!isMatch) return done(null, false, { message: 'Incorrect password.' });
-    
-    return done(null, user);
-  } catch (err) { return done(err); }
-}));
-
-passport.serializeUser((user, done) => {
-  done(null, user._id.toString());
-});
-
-passport.deserializeUser(async (id, done) => {
-  try {
-    const user = await User.findById(id);
-    done(null, user);
-  } catch (err) {
-    done(err, null);
-  }
-});
-
-// AUTH SHIELD MIDDLEWARE
+// PURE CUSTOM AUTH SHIELD MIDDLEWARE
 const ensureAuthenticated = (req, res, next) => {
-  if (req.isAuthenticated()) return next();
+  if (req.session && req.session.user) return next();
   res.status(401).json({ loggedIn: false, error: "Unauthorized access path." });
 };
 
@@ -111,7 +61,7 @@ const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 
 const ai = new GoogleGenAI({ apiKey: process.env.EDUTRACK_API_KEY });
 
 // ==========================================================================
-// USER VALIDATION & SIGNUP ROUTES
+// USER VALIDATION & SIGNUP ROUTES (CUSTOM DRIVEN)
 // ==========================================================================
 app.post('/api/auth/register', async (req, res) => {
   try {
@@ -129,38 +79,50 @@ app.post('/api/auth/register', async (req, res) => {
     const newUser = new User({ username: cleanUsername, password });
     await newUser.save();
     
-    req.login(newUser, err => {
-      if (err) return res.status(500).json({ error: "Auto-login engagement failed." });
-      return res.json({ success: true, user: { username: newUser.username } });
-    });
+    // Save session payload directly into cookie stream
+    req.session.user = { id: newUser._id.toString(), username: newUser.username };
+    return res.json({ success: true, user: { username: newUser.username } });
   } catch (err) { 
     console.error("🔥 SYSTEM REGISTRATION ERROR:", err);
-    return res.status(500).json({ error: err.message || "Registration sequence database error." }); 
+    return res.status(500).json({ error: "Registration sequence database error." }); 
   }
 });
 
-app.post('/api/auth/login', (req, res, next) => {
-  passport.authenticate('local', (err, user, info) => {
-    if (err) return res.status(500).json({ error: "Internal validation failure." });
-    if (!user) return res.status(401).json({ error: info?.message || "Invalid authentication details." });
-    
-    req.login(user, (loginErr) => {
-      if (loginErr) return res.status(500).json({ error: "Login allocation runtime error." });
-      return res.json({ success: true, user: { username: user.username } });
-    });
-  })(req, res, next);
+app.post('/api/auth/login', async (req, res) => {
+  try {
+    const { username, password } = req.body;
+    if (!username || !password) {
+      return res.status(400).json({ error: "Missing username or password fields." });
+    }
+
+    const cleanUsername = username.toLowerCase().trim();
+    const user = await User.findOne({ username: cleanUsername });
+    if (!user) {
+      return res.status(401).json({ error: "Incorrect username or password details." });
+    }
+
+    const isMatch = await user.comparePassword(password);
+    if (!isMatch) {
+      return res.status(401).json({ error: "Incorrect username or password details." });
+    }
+
+    // Assign custom cookie session payload
+    req.session.user = { id: user._id.toString(), username: user.username };
+    return res.json({ success: true, user: { username: user.username } });
+  } catch (err) {
+    console.error("🔥 LOGIN FAILURE:", err);
+    return res.status(500).json({ error: "Internal validation failure." });
+  }
 });
 
-app.post('/api/auth/logout', (req, res, next) => {
-  req.logout(err => {
-    if (err) return next(err);
-    res.json({ success: true });
-  });
+app.post('/api/auth/logout', (req, res) => {
+  req.session = null; // Instantly destroys cookie payload on browser side
+  res.json({ success: true });
 });
 
 app.get('/api/auth/session', (req, res) => {
-  if (req.isAuthenticated()) {
-    res.json({ loggedIn: true, username: req.user.username });
+  if (req.session && req.session.user) {
+    res.json({ loggedIn: true, username: req.session.user.username });
   } else {
     res.status(200).json({ loggedIn: false });
   }
@@ -199,7 +161,7 @@ app.post('/api/parse-syllabus', ensureAuthenticated, upload.single('syllabus'), 
     const structuredSchedule = JSON.parse(aiResponse.text);
 
     const newPlan = new StudyPlan({
-        userId: req.user._id,
+        userId: req.session.user.id, // Pulled straight from custom cookie payload mapping
         examDate,
         weeklyHours,
         data: structuredSchedule
@@ -212,7 +174,7 @@ app.post('/api/parse-syllabus', ensureAuthenticated, upload.single('syllabus'), 
 
 app.get('/api/history', ensureAuthenticated, async (req, res) => {
   try {
-    const records = await StudyPlan.find({ userId: req.user._id }).sort({ _id: -1 });
+    const records = await StudyPlan.find({ userId: req.session.user.id }).sort({ _id: -1 });
     res.json(records);
   } catch (error) { res.status(500).json({ error: "Failed to read database logs." }); }
 });
