@@ -5,7 +5,7 @@ const { GoogleGenAI } = require('@google/genai');
 const path = require('path');
 const mongoose = require('mongoose');
 const session = require('express-session');
-const MongoStore = require('connect-mongo'); // Moved cleanly up with standard dependencies
+const MongoStore = require('connect-mongo')(session); // Moved cleanly up with standard dependencies
 const passport = require('passport');
 const LocalStrategy = require('passport-local').Strategy;
 require('dotenv').config();
@@ -45,14 +45,14 @@ app.use(express.static(path.join(__dirname, 'public')));
 // ==========================================================================
 // PASSPORT SINGLE INITIALIZATION BLOCK (VERSION-AGNOSTIC PERSISTENCE)
 // ==========================================================================
+// ==========================================================================
+// PASSPORT SINGLE INITIALIZATION BLOCK (LEGACY COMPATIBILITY MODE)
+// ==========================================================================
 app.use(session({
   secret: process.env.SESSION_SECRET || 'fallback_secret_key',
   resave: false,
   saveUninitialized: false,
-  store: MongoStore.create ? MongoStore.create({
-    mongoUrl: process.env.MONGODB_URI,
-    ttl: 24 * 60 * 60
-  }) : new MongoStore({
+  store: new MongoStore({
     mongooseConnection: mongoose.connection,
     ttl: 24 * 60 * 60
   }),
