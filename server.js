@@ -7,6 +7,7 @@ const mongoose = require('mongoose');
 const session = require('express-session');
 const passport = require('passport');
 const LocalStrategy = require('passport-local').Strategy;
+const MongoStore = require('connect-mongo');
 require('dotenv').config();
 
 // Destructure model dependencies explicitly
@@ -45,10 +46,18 @@ app.use(express.static(path.join(__dirname, 'public')));
 // ==========================================================================
 // PASSPORT SINGLE INITIALIZATION BLOCK
 // ==========================================================================
+// ==========================================================================
+// PASSPORT SINGLE INITIALIZATION BLOCK (PRODUCTION ROOTED VIA ATLAS MONGOSTORE)
+// ==========================================================================
 app.use(session({
   secret: process.env.SESSION_SECRET || 'fallback_secret_key',
   resave: false,
   saveUninitialized: false,
+  store: MongoStore.create({
+    mongoUrl: process.env.MONGODB_URI,
+    ttl: 24 * 60 * 60, // Automatically clear stale session documents after 24 hours
+    autoRemove: 'native'
+  }),
   cookie: { 
     secure: process.env.NODE_ENV === 'production', 
     sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
