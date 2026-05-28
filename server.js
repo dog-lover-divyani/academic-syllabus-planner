@@ -45,14 +45,16 @@ app.use(express.static(path.join(__dirname, 'public')));
 // ==========================================================================
 // PASSPORT SINGLE INITIALIZATION BLOCK (SERVERLESS COOKIE STORAGE)
 // ==========================================================================
+// 1. Core Cookie Session Middleware (FIRST)
 app.use(cookieSession({
   name: 'session',
   keys: [process.env.SESSION_SECRET || 'fallback_secret_key'],
-  maxAge: 24 * 60 * 60 * 1000, // Session duration: 24h
+  maxAge: 24 * 60 * 60 * 1000,
   secure: process.env.NODE_ENV === 'production', 
   sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax'
 }));
 
+// 2. Passport Strategies initialization (SECOND)
 app.use(passport.initialize());
 app.use(passport.session());
 
@@ -68,10 +70,17 @@ passport.use(new LocalStrategy(async (username, password, done) => {
   } catch (err) { return done(err); }
 }));
 
-passport.serializeUser((user, done) => done(null, user.id));
+passport.serializeUser((user, done) => {
+  done(null, user._id.toString());
+});
+
 passport.deserializeUser(async (id, done) => {
-  try { const user = await User.findById(id); done(null, user); } 
-  catch (err) { done(err); }
+  try {
+    const user = await User.findById(id);
+    done(null, user);
+  } catch (err) {
+    done(err, null);
+  }
 });
 
 // AUTH SHIELD MIDDLEWARE
