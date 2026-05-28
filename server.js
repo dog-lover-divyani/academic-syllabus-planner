@@ -18,14 +18,19 @@ const app = express();
 // SERVERLESS-OPTIMIZED DATABASE CONNECTIVITY ARCHITECTURE
 // ==========================================================================
 let isConnected = false;
+// ==========================================================================
+// ROBUST SERVERLESS DATABASE CONNECTIVITY ENGINE
+// ==========================================================================
 const connectDatabase = async () => {
-  if (isConnected) return;
+  // Check if mongoose already has an active or connecting lifecycle track
+  if (mongoose.connection.readyState === 1) return;
+  if (mongoose.connection.readyState === 2) return;
   
   try {
-    const db = await mongoose.connect(process.env.MONGODB_URI, {
-      serverSelectionTimeoutMS: 5000 
+    console.log('⏳ Initiating database connection handshake...');
+    await mongoose.connect(process.env.MONGODB_URI, {
+      serverSelectionTimeoutMS: 5000 // Give up quickly if the path is broken
     });
-    isConnected = db.connections[0].readyState === 1;
     console.log('🍃 Connected cleanly to live cloud MongoDB database instance.');
   } catch (err) {
     console.error('❌ MongoDB cloud connection failure:', err);
