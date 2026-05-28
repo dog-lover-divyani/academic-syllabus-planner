@@ -1,8 +1,7 @@
 const express = require('express');
 const multer = require('multer');
 const pdfParse = require('pdf-parse');
-const { GoogleGenAI } = require('@google/genai') || {}; // Safe destructuring fallback
-const GoogleGenerativeAI = require('@google/generative-ai').GoogleGenerativeAI; // Classic SDK import
+const { GoogleGenerativeAI } = require('@google/generative-ai'); // Rock-solid SDK
 const path = require('path');
 const mongoose = require('mongoose');
 const cookieSession = require('cookie-session');
@@ -57,25 +56,10 @@ const ensureAuthenticated = (req, res, next) => {
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
 
 // ==========================================================================
-// UNIVERSAL GOOGLE GEMINI INITIALIZATION ENGINE
+// GOOGLE GEMINI INITIALIZATION ENGINE
 // ==========================================================================
 const activeApiKey = process.env.EDUTRACK_API_KEY || process.env.GEMINI_API_KEY;
-let aiEngineInstance = null;
-let isNewSDK = false;
-
-if (GoogleGenAI && typeof GoogleGenAI === 'function') {
-    try {
-        aiEngineInstance = new GoogleGenAI({ apiKey: activeApiKey });
-        isNewSDK = true;
-    } catch(e) { aiEngineInstance = null; }
-}
-
-if (!aiEngineInstance && GoogleGenerativeAI) {
-    try {
-        aiEngineInstance = new GoogleGenerativeAI(activeApiKey);
-        isNewSDK = false;
-    } catch(e) { console.error("Critical AI Initialization Trace Failure:", e); }
-}
+const aiEngineInstance = new GoogleGenerativeAI(activeApiKey);
 
 // ==========================================================================
 // USER VALIDATION & SIGNUP ROUTES
@@ -133,27 +117,14 @@ app.post('/api/parse-syllabus', ensureAuthenticated, upload.single('syllabus'), 
     const systemInstructions = `You are an elite academic advisor. Break down this syllabus into a strict week-by-week study timeline. Respond ONLY with a valid JSON object matching this schema layout structure format without codeblocks:
     { "courseName": "String", "totalEstimatedWeeks": 12, "schedule": [ { "week": 1, "topicTitle": "String", "estimatedHours": 4, "subtopics": ["String"] } ] }`;
 
-    let generatedTextResult = "";
-
-    // Hybrid Router Execution: Run whatever SDK package is actively loaded on Vercel
-    if (isNewSDK && aiEngineInstance.models) {
-        const aiResponse = await aiEngineInstance.models.generateContent({
-          model: "gemini-2.5-flash",
-          contents: [`Syllabus context text layout:\n${rawText}`],
-          config: { systemInstruction: systemInstructions, responseMimeType: "application/json" }
-        });
-        generatedTextResult = aiResponse.text;
-    } else if (aiEngineInstance) {
-        const legacyModel = aiEngineInstance.getGenerativeModel({ 
-            model: "gemini-1.5-flash",
-            generationConfig: { responseMimeType: "application/json" }
-        });
-        const prompt = `${systemInstructions}\n\nSyllabus raw dataset text to interpret:\n${rawText}`;
-        const aiResponse = await legacyModel.generateContent(prompt);
-        generatedTextResult = aiResponse.response.text();
-    } else {
-        throw new Error("No functional AI connection engine instantiated.");
-    }
+    const model = aiEngineInstance.getGenerativeModel({ 
+        model: "gemini-1.5-flash",
+        generationConfig: { responseMimeType: "application/json" }
+    });
+    
+    const prompt = `${systemInstructions}\n\nSyllabus raw dataset text to interpret:\n${rawText}`;
+    const aiResponse = await model.generateContent(prompt);
+    const generatedTextResult = aiResponse.response.text();
 
     const structuredSchedule = JSON.parse(generatedTextResult.replace(/```json/g, '').replace(/```/g, '').trim());
 
@@ -182,23 +153,16 @@ app.get('/api/history', ensureAuthenticated, async (req, res) => {
 app.post('/api/generate-flashcards', ensureAuthenticated, async (req, res) => {
   try {
     const { notes } = req.body;
-    if (!aiEngineInstance) return res.status(500).json({ error: "AI Unconfigured." });
-
+    
     const systemInstructions = `Respond ONLY with a valid JSON array format matching this schema without markdown formatting blocks: [{"q": "Question Text", "a": "Answer Text"}]`;
-    let resultText = "";
 
-    if (isNewSDK) {
-        const response = await aiEngineInstance.models.generateContent({
-            model: "gemini-2.5-flash",
-            contents: [`Generate active recall flashcards from notes:\n${notes}`],
-            config: { systemInstruction: systemInstructions, responseMimeType: "application/json" }
-        });
-        resultText = response.text;
-    } else {
-        const model = aiEngineInstance.getGenerativeModel({ model: "gemini-1.5-flash", generationConfig: { responseMimeType: "application/json" } });
-        const resWrap = await model.generateContent(`${systemInstructions}\n\nNotes:\n${notes}`);
-        resultText = resWrap.response.text();
-    }
+    const model = aiEngineInstance.getGenerativeModel({ 
+        model: "gemini-1.5-flash", 
+        generationConfig: { responseMimeType: "application/json" } 
+    });
+    
+    const resWrap = await model.generateContent(`${systemInstructions}\n\nNotes:\n${notes}`);
+    const resultText = resWrap.response.text();
 
     res.json(JSON.parse(resultText.replace(/```json/g, '').replace(/```/g, '').trim()));
   } catch (e) { res.status(500).json({ error: "Flashcard processing error." }); }
@@ -207,19 +171,10 @@ app.post('/api/generate-flashcards', ensureAuthenticated, async (req, res) => {
 app.post('/api/summarize-notes', ensureAuthenticated, async (req, res) => {
   try {
     const { notes } = req.body;
-    let summaryOut = "";
 
-    if (isNewSDK) {
-        const resp = await aiEngineInstance.models.generateContent({
-            model: "gemini-2.5-flash",
-            contents: [`Convert notes cleanly into an organized text outline summary structural layout:\n${notes}`]
-        });
-        summaryOut = resp.text;
-    } else {
-        const model = aiEngineInstance.getGenerativeModel({ model: "gemini-1.5-flash" });
-        const resp = await model.generateContent(`Convert notes cleanly into an organized text outline summary structural layout:\n${notes}`);
-        summaryOut = resp.response.text();
-    }
+    const model = aiEngineInstance.getGenerativeModel({ model: "gemini-1.5-flash" });
+    const resp = await model.generateContent(`Convert notes cleanly into an organized text outline summary structural layout:\n${notes}`);
+    const summaryOut = resp.response.text();
 
     res.json({ summary: summaryOut || "Summary layout failed." });
   } catch (e) { res.status(500).json({ error: "Summarizer system exception." }); }
