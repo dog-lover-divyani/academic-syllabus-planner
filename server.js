@@ -1,19 +1,19 @@
 const express = require('express');
 const multer = require('multer');
 const pdfParse = require('pdf-parse');
-const { GoogleGenAI } = require('@google/genai') || require('@google/generative-ai');
+const { GoogleGenAI } = require('@google/genai') || {}; // Safe destructuring fallback
+const GoogleGenerativeAI = require('@google/generative-ai').GoogleGenerativeAI; // Classic SDK import
 const path = require('path');
 const mongoose = require('mongoose');
 const cookieSession = require('cookie-session');
 require('dotenv').config();
 
-// Destructure model dependencies explicitly
 const { User, StudyPlan } = require('./models');
 
 const app = express();
 
 // ==========================================================================
-// SERVERLESS-OPTIMIZED DATABASE CONNECTIVITY ARCHITECTURE
+// ROBUST SERVERLESS DATABASE CONNECTIVITY ENGINE
 // ==========================================================================
 const connectDatabase = async () => {
   if (mongoose.connection.readyState === 1) return;
@@ -34,7 +34,6 @@ app.use(async (req, res, next) => {
   next();
 });
 
-// Standard core middleware configuration
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
@@ -45,125 +44,121 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.use(cookieSession({
   name: 'session',
   keys: [process.env.SESSION_SECRET || 'fallback_secret_key'],
-  maxAge: 24 * 60 * 60 * 1000, // Session duration: 24h
+  maxAge: 24 * 60 * 60 * 1000, 
   secure: process.env.NODE_ENV === 'production', 
   sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax'
 }));
 
-// PURE CUSTOM AUTH SHIELD MIDDLEWARE
 const ensureAuthenticated = (req, res, next) => {
   if (req.session && req.session.user) return next();
   res.status(401).json({ loggedIn: false, error: "Unauthorized access path." });
 };
 
-// Configure File Upload Processing
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
-// Backup key allocation in case a typo occurred during deployment configuration
-const activeApiKey = process.env.EDUTRACK_API_KEY || process.env.GEMINI_API_KEY;
-const ai = new GoogleGenAI({ apiKey: activeApiKey });
 
 // ==========================================================================
-// USER VALIDATION & SIGNUP ROUTES (CUSTOM DRIVEN)
+// UNIVERSAL GOOGLE GEMINI INITIALIZATION ENGINE
+// ==========================================================================
+const activeApiKey = process.env.EDUTRACK_API_KEY || process.env.GEMINI_API_KEY;
+let aiEngineInstance = null;
+let isNewSDK = false;
+
+if (GoogleGenAI && typeof GoogleGenAI === 'function') {
+    try {
+        aiEngineInstance = new GoogleGenAI({ apiKey: activeApiKey });
+        isNewSDK = true;
+    } catch(e) { aiEngineInstance = null; }
+}
+
+if (!aiEngineInstance && GoogleGenerativeAI) {
+    try {
+        aiEngineInstance = new GoogleGenerativeAI(activeApiKey);
+        isNewSDK = false;
+    } catch(e) { console.error("Critical AI Initialization Trace Failure:", e); }
+}
+
+// ==========================================================================
+// USER VALIDATION & SIGNUP ROUTES
 // ==========================================================================
 app.post('/api/auth/register', async (req, res) => {
   try {
     const { username, password } = req.body;
-    if (!username || !password) {
-      return res.status(400).json({ error: "Provide username and password metrics." });
-    }
+    if (!username || !password) return res.status(400).json({ error: "Provide parameters." });
     
     const cleanUsername = username.toLowerCase().trim();
     const existingUser = await User.findOne({ username: cleanUsername });
-    if (existingUser) {
-      return res.status(400).json({ error: "Username already assigned." });
-    }
+    if (existingUser) return res.status(400).json({ error: "Username assigned." });
 
     const newUser = new User({ username: cleanUsername, password });
     await newUser.save();
     
-    // Save session payload directly into cookie stream
     req.session.user = { id: newUser._id.toString(), username: newUser.username };
     return res.json({ success: true, user: { username: newUser.username } });
   } catch (err) { 
-    console.error("🔥 SYSTEM REGISTRATION ERROR:", err);
-    return res.status(500).json({ error: "Registration sequence database error." }); 
+    return res.status(500).json({ error: "Registration database sequence exception." }); 
   }
 });
 
 app.post('/api/auth/login', async (req, res) => {
   try {
     const { username, password } = req.body;
-    if (!username || !password) {
-      return res.status(400).json({ error: "Missing username or password fields." });
+    const user = await User.findOne({ username: username.toLowerCase().trim() });
+    if (!user || !(await user.comparePassword(password))) {
+      return res.status(401).json({ error: "Incorrect credentials." });
     }
-
-    const cleanUsername = username.toLowerCase().trim();
-    const user = await User.findOne({ username: cleanUsername });
-    if (!user) {
-      return res.status(401).json({ error: "Incorrect username or password details." });
-    }
-
-    const isMatch = await user.comparePassword(password);
-    if (!isMatch) {
-      return res.status(401).json({ error: "Incorrect username or password details." });
-    }
-
-    // Assign custom cookie session payload
     req.session.user = { id: user._id.toString(), username: user.username };
     return res.json({ success: true, user: { username: user.username } });
   } catch (err) {
-    console.error("🔥 LOGIN FAILURE:", err);
-    return res.status(500).json({ error: "Internal validation failure." });
+    return res.status(500).json({ error: "Validation failure." });
   }
 });
 
-app.post('/api/auth/logout', (req, res) => {
-  req.session = null; // Instantly destroys cookie payload on browser side
-  res.json({ success: true });
-});
-
+app.post('/api/auth/logout', (req, res) => { req.session = null; res.json({ success: true }); });
 app.get('/api/auth/session', (req, res) => {
-  if (req.session && req.session.user) {
-    res.json({ loggedIn: true, username: req.session.user.username });
-  } else {
-    res.status(200).json({ loggedIn: false });
-  }
+  if (req.session && req.session.user) res.json({ loggedIn: true, username: req.session.user.username });
+  else res.status(200).json({ loggedIn: false });
 });
 
 // ==========================================================================
-// DATA ACQUISITION STORAGE ROUTES
+// DATA ACQUISITION AND PARSING STUDY PLAN ROUTES
 // ==========================================================================
 app.post('/api/parse-syllabus', ensureAuthenticated, upload.single('syllabus'), async (req, res) => {
   try {
-    if (!req.file) return res.status(400).json({ error: "Please upload a syllabus file." });
+    if (!req.file) return res.status(400).json({ error: "Syllabus asset missing." });
     const { examDate, weeklyHours } = req.body;
 
-    let contentsPayload = [];
-    let rawText = "";
-    try {
-      const pdfData = await pdfParse(req.file.buffer);
-      rawText = pdfData.text;
-    } catch (e) { }
+    const pdfData = await pdfParse(req.file.buffer);
+    const rawText = pdfData.text || "Empty document transcript layer.";
 
-    if (!rawText || rawText.trim().length === 0) {
-      contentsPayload = [{ inlineData: { mimeType: "application/pdf", data: req.file.buffer.toString("base64") } }, "Extract curriculum information from raw document assets and map structured week data layouts."];
+    const systemInstructions = `You are an elite academic advisor. Break down this syllabus into a strict week-by-week study timeline. Respond ONLY with a valid JSON object matching this schema layout structure format without codeblocks:
+    { "courseName": "String", "totalEstimatedWeeks": 12, "schedule": [ { "week": 1, "topicTitle": "String", "estimatedHours": 4, "subtopics": ["String"] } ] }`;
+
+    let generatedTextResult = "";
+
+    // Hybrid Router Execution: Run whatever SDK package is actively loaded on Vercel
+    if (isNewSDK && aiEngineInstance.models) {
+        const aiResponse = await aiEngineInstance.models.generateContent({
+          model: "gemini-2.5-flash",
+          contents: [`Syllabus context text layout:\n${rawText}`],
+          config: { systemInstruction: systemInstructions, responseMimeType: "application/json" }
+        });
+        generatedTextResult = aiResponse.text;
+    } else if (aiEngineInstance) {
+        const legacyModel = aiEngineInstance.getGenerativeModel({ 
+            model: "gemini-1.5-flash",
+            generationConfig: { responseMimeType: "application/json" }
+        });
+        const prompt = `${systemInstructions}\n\nSyllabus raw dataset text to interpret:\n${rawText}`;
+        const aiResponse = await legacyModel.generateContent(prompt);
+        generatedTextResult = aiResponse.response.text();
     } else {
-      contentsPayload = [`Syllabus text dataset to parse:\n${rawText}`];
+        throw new Error("No functional AI connection engine instantiated.");
     }
 
-    const systemInstructions = `You are an elite academic advisor. Break down this syllabus into a strict week-by-week study timeline. Respond ONLY with a valid JSON object matching the standard requested format structure layout.`;
-    const jsonSchema = { type: "OBJECT", properties: { courseName: { type: "STRING" }, totalEstimatedWeeks: { type: "NUMBER" }, schedule: { type: "ARRAY", items: { type: "OBJECT", properties: { week: { type: "NUMBER" }, topicTitle: { type: "STRING" }, estimatedHours: { type: "NUMBER" }, subtopics: { type: "ARRAY", items: { type: "STRING" } } }, required: ["week", "topicTitle", "estimatedHours", "subtopics"] } } }, required: ["courseName", "totalEstimatedWeeks", "schedule"] };
-
-    const aiResponse = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
-      contents: contentsPayload,
-      config: { systemInstruction: systemInstructions, responseMimeType: "application/json", responseSchema: jsonSchema }
-    });
-
-    const structuredSchedule = JSON.parse(aiResponse.text);
+    const structuredSchedule = JSON.parse(generatedTextResult.replace(/```json/g, '').replace(/```/g, '').trim());
 
     const newPlan = new StudyPlan({
-        userId: req.session.user.id, // Pulled straight from custom cookie payload mapping
+        userId: req.session.user.id,
         examDate,
         weeklyHours,
         data: structuredSchedule
@@ -171,41 +166,62 @@ app.post('/api/parse-syllabus', ensureAuthenticated, upload.single('syllabus'), 
     await newPlan.save();
 
     res.json(structuredSchedule);
-  } catch (error) { res.status(500).json({ error: "Syllabus parsing execution exception." }); }
+  } catch (error) { 
+    console.error("AI ROUTE EXCEPTION:", error);
+    res.status(500).json({ error: "Syllabus parsing execution exception." }); 
+  }
 });
 
 app.get('/api/history', ensureAuthenticated, async (req, res) => {
   try {
     const records = await StudyPlan.find({ userId: req.session.user.id }).sort({ _id: -1 });
     res.json(records);
-  } catch (error) { res.status(500).json({ error: "Failed to read database logs." }); }
+  } catch (error) { res.status(500).json({ error: "Database log query failure." }); }
 });
 
 app.post('/api/generate-flashcards', ensureAuthenticated, async (req, res) => {
   try {
     const { notes } = req.body;
-    const systemInstructions = `You are a strict active-recall assistant. Respond ONLY with a valid JSON array matching the requested schema.`;
-    const jsonSchema = { type: "ARRAY", items: { type: "OBJECT", properties: { q: { type: "STRING" }, a: { type: "STRING" } }, required: ["q", "a"] } };
+    if (!aiEngineInstance) return res.status(500).json({ error: "AI Unconfigured." });
 
-    const aiResponse = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
-      contents: `Generate cards based on notes:\n${notes}`,
-      config: { systemInstruction: systemInstructions, responseMimeType: "application/json", responseSchema: jsonSchema }
-    });
-    res.json(JSON.parse(aiResponse.text));
-  } catch (e) { res.status(500).json({ error: "Cards processing error." }); }
+    const systemInstructions = `Respond ONLY with a valid JSON array format matching this schema without markdown formatting blocks: [{"q": "Question Text", "a": "Answer Text"}]`;
+    let resultText = "";
+
+    if (isNewSDK) {
+        const response = await aiEngineInstance.models.generateContent({
+            model: "gemini-2.5-flash",
+            contents: [`Generate active recall flashcards from notes:\n${notes}`],
+            config: { systemInstruction: systemInstructions, responseMimeType: "application/json" }
+        });
+        resultText = response.text;
+    } else {
+        const model = aiEngineInstance.getGenerativeModel({ model: "gemini-1.5-flash", generationConfig: { responseMimeType: "application/json" } });
+        const resWrap = await model.generateContent(`${systemInstructions}\n\nNotes:\n${notes}`);
+        resultText = resWrap.response.text();
+    }
+
+    res.json(JSON.parse(resultText.replace(/```json/g, '').replace(/```/g, '').trim()));
+  } catch (e) { res.status(500).json({ error: "Flashcard processing error." }); }
 });
 
 app.post('/api/summarize-notes', ensureAuthenticated, async (req, res) => {
   try {
     const { notes } = req.body;
-    const systemInstructions = `You are an expert academic editor. Convert the user notes cleanly into a highly readable plain-text summary structure.`;
-    const aiResponse = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
-      contents: `Summarize notes:\n${notes}`,
-      config: { systemInstruction: systemInstructions }
-    });
-    res.json({ summary: aiResponse.text || "Summary failed." });
+    let summaryOut = "";
+
+    if (isNewSDK) {
+        const resp = await aiEngineInstance.models.generateContent({
+            model: "gemini-2.5-flash",
+            contents: [`Convert notes cleanly into an organized text outline summary structural layout:\n${notes}`]
+        });
+        summaryOut = resp.text;
+    } else {
+        const model = aiEngineInstance.getGenerativeModel({ model: "gemini-1.5-flash" });
+        const resp = await model.generateContent(`Convert notes cleanly into an organized text outline summary structural layout:\n${notes}`);
+        summaryOut = resp.response.text();
+    }
+
+    res.json({ summary: summaryOut || "Summary layout failed." });
   } catch (e) { res.status(500).json({ error: "Summarizer system exception." }); }
 });
 
