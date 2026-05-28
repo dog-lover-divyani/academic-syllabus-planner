@@ -60,24 +60,26 @@ async function verifyActiveSessionContext() {
         const state = await response.json();
         
         if (state && state.loggedIn) {
-            // 1. Clear modal visibility barrier out of the way
+            // 1. ALWAYS hide the login overlay modal instantly on successful authorization
             document.getElementById('authOverlay')?.classList.add('hidden');
             
-            // 2. Fetch log data from backend
+            // 2. Fetch and render sidebar history logs safely
             await streamHistoricalDatabaseLogs();
 
-            // 3. Mount interface states programmatically
+            // 3. UI STATE CHECK: Decide what layout view to show the authenticated profile
             if (currentPlanData) {
                 views.empty.classList.add('hidden');
                 views.active.classList.remove('hidden');
             } else {
                 const historyContainer = document.getElementById('historyPlanList');
+                // Check if any prior schedule cards physically exist to click
                 const firstPlan = historyContainer?.querySelector('.history-item-link');
 
-                if (firstPlan) {
+                if (firstPlan && !firstPlan.innerText.includes("No saved history")) {
                     console.log("Bootstrap pipeline running: Hydrating dashboard with recent profiles...");
                     firstPlan.click();
                 } else {
+                    // For fresh accounts with a blank profile, show the "Upload Syllabus" panel cleanly!
                     views.empty.classList.remove('hidden');
                     views.active.classList.add('hidden');
                 }
