@@ -46,7 +46,7 @@ forms.fileInput?.addEventListener('change', (e) => {
 });
 
 // ==========================================================================
-// CENTRAL AUTHENTICATION ENGINE (ROUTING ISOLATED & REDIRECT FIXED)
+// CENTRAL AUTHENTICATION ENGINE (ROUTING ISOLATED)
 // ==========================================================================
 async function verifyActiveSessionContext() {
     try {
@@ -60,26 +60,24 @@ async function verifyActiveSessionContext() {
         const state = await response.json();
         
         if (state && state.loggedIn) {
-            // 1. ALWAYS hide the login overlay modal instantly on successful authorization
+            // 1. ALWAYS drop the overlay instantly so the user doesn't get frozen out
             document.getElementById('authOverlay')?.classList.add('hidden');
             
-            // 2. Fetch and render sidebar history logs safely
+            // 2. Fetch log data from backend safely
             await streamHistoricalDatabaseLogs();
 
-            // 3. UI STATE CHECK: Decide what layout view to show the authenticated profile
+            // 3. UI STATE CHECK: Decide what layout view to show
             if (currentPlanData) {
                 views.empty.classList.add('hidden');
                 views.active.classList.remove('hidden');
             } else {
                 const historyContainer = document.getElementById('historyPlanList');
-                // Check if any prior schedule cards physically exist to click
                 const firstPlan = historyContainer?.querySelector('.history-item-link');
 
                 if (firstPlan && !firstPlan.innerText.includes("No saved history")) {
                     console.log("Bootstrap pipeline running: Hydrating dashboard with recent profiles...");
                     firstPlan.click();
                 } else {
-                    // For fresh accounts with a blank profile, show the "Upload Syllabus" panel cleanly!
                     views.empty.classList.remove('hidden');
                     views.active.classList.add('hidden');
                 }
@@ -88,7 +86,7 @@ async function verifyActiveSessionContext() {
             document.getElementById('authOverlay')?.classList.remove('hidden');
         }
     } catch (err) {
-        console.log("Standby mode active: Waiting for credentials login state.");
+        console.error("Session verification issue:", err);
         document.getElementById('authOverlay')?.classList.remove('hidden');
     }
 }
@@ -114,11 +112,11 @@ async function processAuthenticationRequest(endpointUrl) {
 
         alert(endpointUrl.includes('register') ? "Account created successfully!" : "Access Granted!");
         
-        // Execute workspace setup cleanly
+        // Clear login wall instantly
         await verifyActiveSessionContext(); 
 
     } catch (err) {
-        alert("Authentication Error: " + err.message);
+        alert(err.message);
     }
 }
 
@@ -454,7 +452,7 @@ expandLink?.addEventListener('click', () => {
 });
 
 // ==========================================================================
-// DYNAMIC SERVER HISTORY STREAMING ARCHITECTURE (DATETIME STAMP BUG PATCHED)
+// DYNAMIC SERVER HISTORY STREAMING ARCHITECTURE (ROBUST SAFE-PARSING PATCH)
 // ==========================================================================
 async function streamHistoricalDatabaseLogs() {
     const historyContainer = document.getElementById('historyPlanList');
@@ -474,10 +472,12 @@ async function streamHistoricalDatabaseLogs() {
         historyContainer.innerHTML = '';
 
         databaseRecords.forEach(record => {
-            if (!record.data) return;
+            if (!record || !record.data) return;
 
-            // BUG PATCH: Mongoose models use 'createdAt' by default instead of a nonexistent string 'timestamp'
-            const displayDate = record.createdAt ? new Date(record.createdAt).toLocaleDateString() : 'Recent Plan';
+            // SAFE CONVERSION SAFEGUARD: Handles both timestamp formats cleanly without throwing type exceptions
+            let displayDate = 'Recent Plan';
+            if (record.createdAt) displayDate = new Date(record.createdAt).toLocaleDateString();
+            else if (record.timestamp) displayDate = new Date(record.timestamp).toLocaleDateString();
 
             const planItem = document.createElement('li');
             planItem.className = 'history-item-link';
