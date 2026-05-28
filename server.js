@@ -4,14 +4,14 @@ const pdfParse = require('pdf-parse');
 const { GoogleGenAI } = require('@google/genai'); 
 const path = require('path');
 const mongoose = require('mongoose');
-const session = require('express-session');
-const cookieSession = require('cookie-session'); // Moved cleanly up with standard dependencies
+const cookieSession = require('cookie-session');
 const passport = require('passport');
 const LocalStrategy = require('passport-local').Strategy;
 require('dotenv').config();
 
-// Load models AFTER core dependencies are compiled
+// Destructure model dependencies explicitly
 const { User, StudyPlan } = require('./models');
+
 const app = express();
 
 // ==========================================================================
@@ -43,21 +43,15 @@ app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
 
 // ==========================================================================
-// PASSPORT SINGLE INITIALIZATION BLOCK (VERSION-AGNOSTIC PERSISTENCE)
-// ==========================================================================
-// ==========================================================================
-// PASSPORT SINGLE INITIALIZATION BLOCK (SERVERLESS PERFECT COOKIE ENGINE)
+// PASSPORT SINGLE INITIALIZATION BLOCK (SERVERLESS COOKIE STORAGE)
 // ==========================================================================
 app.use(cookieSession({
   name: 'session',
   keys: [process.env.SESSION_SECRET || 'fallback_secret_key'],
   maxAge: 24 * 60 * 60 * 1000, // Session duration: 24h
-  secure: process.env.NODE_ENV === 'production',
+  secure: process.env.NODE_ENV === 'production', 
   sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax'
 }));
-
-app.use(passport.initialize());
-app.use(passport.session());
 
 app.use(passport.initialize());
 app.use(passport.session());
@@ -80,11 +74,13 @@ passport.deserializeUser(async (id, done) => {
   catch (err) { done(err); }
 });
 
+// AUTH SHIELD MIDDLEWARE
 const ensureAuthenticated = (req, res, next) => {
   if (req.isAuthenticated()) return next();
   res.status(401).json({ loggedIn: false, error: "Unauthorized access path." });
 };
 
+// Configure File Upload Processing
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
 const ai = new GoogleGenAI({ apiKey: process.env.EDUTRACK_API_KEY });
 
@@ -157,7 +153,7 @@ app.post('/api/parse-syllabus', ensureAuthenticated, upload.single('syllabus'), 
     try {
       const pdfData = await pdfParse(req.file.buffer);
       rawText = pdfData.text;
-    } catch (e) { /* visual fallback */ }
+    } catch (e) { }
 
     if (!rawText || rawText.trim().length === 0) {
       contentsPayload = [{ inlineData: { mimeType: "application/pdf", data: req.file.buffer.toString("base64") } }, "Extract curriculum information from raw document assets and map structured week data layouts."];
